@@ -1,14 +1,17 @@
+import java.util.ArrayList;
 import java.util.HashMap;
 
 public class Board {
     int[] board;
     int toMove;
 
+    Move lastMove;
+
     public Board() {
         board = new int[64];
         toMove = Piece.White;
+        lastMove = new Move(0, 0, 0);
     }
-
     public void loadFen(String fen) {
         HashMap<Character, Integer> fenMap = getFenMap();
 
@@ -33,7 +36,7 @@ public class Board {
 
     public void print() {
         HashMap<Integer, Character> inverseFen = getInverseFenMap();
-        System.out.print("┌───┬───┬───┬───┬───┬───┬───┬───┐\n│");
+        System.out.print("  ┌───┬───┬───┬───┬───┬───┬───┬───┐\n8 │");
         for (int i = 0; i < board.length; i++) {
             if (board[i] == 0) { // Empty space
                 System.out.print("   ");
@@ -45,17 +48,58 @@ public class Board {
 
             if (i == 63) {
                 System.out.println();
-                System.out.println("└───┴───┴───┴───┴───┴───┴───┴───┘");
+                System.out.println("  └───┴───┴───┴───┴───┴───┴───┴───┘");
             }
             else if ((i + 1) % 8 == 0) {
                 System.out.println();
-                System.out.println("├───┼───┼───┼───┼───┼───┼───┼───┤");
+                System.out.println("  ├───┼───┼───┼───┼───┼───┼───┼───┤");
+                System.out.print((8 - ((i+1) / 8)) + " ");
                 System.out.print("│");
             }
         }
+        System.out.println("    a   b   c   d   e   f   g   h");
+
         if (toMove == Piece.White) System.out.println("To Move: White");
         else System.out.println("To Move: Black");
     }
+    public void printMoves(ArrayList<Move> moves) {
+        HashMap<Integer, Character> inverseFen = getInverseFenMap();
+        System.out.print("  ┌───┬───┬───┬───┬───┬───┬───┬───┐\n8 │");
+        for (int i = 0; i < board.length; i++) {
+            if (board[i] == 0) { // Empty space
+                boolean moveSquare = false;
+                for (Move m : moves) {
+                    if (m.endIndex == i) {
+                        moveSquare = true;
+                        System.out.print(" # ");
+                        break;
+                    }
+                }
+                if (!moveSquare) System.out.print("   ");
+            }
+            else {
+                System.out.print(" " + inverseFen.get(board[i]) + " ");
+            }
+            System.out.print("│");
+
+            if (i == 63) {
+                System.out.println();
+                System.out.println("  └───┴───┴───┴───┴───┴───┴───┴───┘");
+            }
+            else if ((i + 1) % 8 == 0) {
+                System.out.println();
+                System.out.println("  ├───┼───┼───┼───┼───┼───┼───┼───┤");
+                System.out.print((8 - ((i+1) / 8)) + " ");
+                System.out.print("│");
+            }
+        }
+        System.out.println("    a   b   c   d   e   f   g   h");
+
+        if (toMove == Piece.White) System.out.println("To Move: White");
+        else System.out.println("To Move: Black");
+    }
+
+    public int[] getState() { return board; }
 
     private static HashMap<Character, Integer> getFenMap() {
         HashMap<Character, Integer> fenMap = new HashMap<>();
@@ -74,7 +118,6 @@ public class Board {
         fenMap.put('P', Piece.Pawn | Piece.White);
         return fenMap;
     }
-
     private static HashMap<Integer, Character> getInverseFenMap() {
         HashMap<Character, Integer> fenMap = getFenMap();
         HashMap<Integer, Character> inverse = new HashMap<>();
@@ -84,5 +127,24 @@ public class Board {
         }
 
         return inverse;
+    }
+    private static HashMap<Integer, Character> getPieceCharMap() {
+        HashMap<Integer, Character> inverseFenMap = new HashMap<>();
+
+        inverseFenMap.put(Piece.Rook   | Piece.Black, '♜');
+        inverseFenMap.put(Piece.Knight | Piece.Black, '♞');
+        inverseFenMap.put(Piece.Bishop | Piece.Black, '♝');
+        inverseFenMap.put(Piece.Queen  | Piece.Black, '♛');
+        inverseFenMap.put(Piece.King   | Piece.Black, '♚');
+        inverseFenMap.put(Piece.Pawn   | Piece.Black, '♟');
+
+        inverseFenMap.put(Piece.Rook   | Piece.White, '♖');
+        inverseFenMap.put(Piece.Knight | Piece.White, '♘');
+        inverseFenMap.put(Piece.Bishop | Piece.White, '♗');
+        inverseFenMap.put(Piece.Queen  | Piece.White, '♕');
+        inverseFenMap.put(Piece.King   | Piece.White, '♔');
+        inverseFenMap.put(Piece.Pawn   | Piece.White, '♙');
+
+        return inverseFenMap;
     }
 }
