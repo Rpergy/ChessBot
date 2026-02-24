@@ -8,4 +8,14 @@ public class Piece {
 
     public static int White = 8;
     public static int Black = 16;
+
+    public static boolean isType(int piece, int targetType) {
+        int type = piece & 0b00111;
+        return type == targetType;
+    }
+
+    public static boolean isColor(int piece, int targetColor) {
+        int color = 0b11000 & piece;
+        return color == targetColor;
+    }
 }
