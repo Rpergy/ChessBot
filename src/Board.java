@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class Board {
@@ -7,10 +8,19 @@ public class Board {
 
     Move lastMove;
 
+    Board prevBoard;
+
     public Board() {
         board = new int[64];
+        prevBoard = this;
         toMove = Piece.White;
         lastMove = new Move(0, 0, 0);
+    }
+    public Board(Board b) {
+        board = Arrays.copyOf(b.board, b.board.length);
+        prevBoard = b.prevBoard;
+        toMove = b.toMove;
+        lastMove = b.lastMove;
     }
     public void loadFen(String fen) {
         HashMap<Character, Integer> fenMap = getFenMap();
@@ -100,6 +110,49 @@ public class Board {
     }
 
     public int[] getState() { return board; }
+
+    public void makeMove(Move move) {
+        prevBoard = new Board(this);
+
+        if (move.isPassant) {
+            if (toMove == Piece.White) board[move.endIndex + 8] = 0;
+            else board[move.endIndex - 8] = 0;
+        }
+        if (move.isCastle) {
+            if (toMove == Piece.White && move.endIndex == 62) { // White kingside
+                board[63] = 0;
+                board[61] = Piece.Rook | Piece.White;
+            }
+            else if (toMove == Piece.White && move.endIndex == 58) { // White queenside
+                board[56] = 0;
+                board[59] = Piece.Rook | Piece.White;
+            }
+            else if (toMove == Piece.Black && move.endIndex == 6) { // Black kingside
+                board[7] = 0;
+                board[5] = Piece.Rook | Piece.Black;
+            }
+            else if (toMove == Piece.Black && move.endIndex == 2) { // Black queenside
+                board[0] = 0;
+                board[3] = Piece.Rook | Piece.Black;
+            }
+        }
+        if (move.promotion != 0)
+            board[move.endIndex] = move.promotion;
+        else
+            board[move.endIndex] = move.piece;
+        board[move.startIndex] = 0;
+        if (toMove == Piece.White) toMove = Piece.Black;
+        else toMove = Piece.White;
+
+        lastMove = move;
+    }
+
+    public void unmakeMove() {
+        board = Arrays.copyOf(prevBoard.board, prevBoard.board.length);
+        prevBoard = prevBoard.prevBoard;
+        toMove = prevBoard.toMove;
+        lastMove = prevBoard.lastMove;
+    }
 
     private static HashMap<Character, Integer> getFenMap() {
         HashMap<Character, Integer> fenMap = new HashMap<>();

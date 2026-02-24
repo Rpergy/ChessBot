@@ -39,6 +39,16 @@ public class Move {
         this.promotion = promotion;
     }
 
+    public Move(Move move) {
+        startIndex = move.startIndex;
+        endIndex = move.endIndex;
+        piece = move.piece;
+        isCapture = move.isCapture;
+        isCastle = move.isCastle;
+        isPassant = move.isPassant;
+        promotion = move.promotion;
+    }
+
 
     public String toString() {
         char cap = (isCapture) ? 'C' : ' ';

@@ -75,13 +75,21 @@ public class Bot {
                     }
                 }
                 int kingColor = Piece.color(square);
+                int k = (kingColor == Piece.White) ? 60 : 4;
+                int rk = (kingColor == Piece.White) ? 63 : 7;
+                int k1 = (kingColor == Piece.White) ? 61 : 5;
+                int k2 = (kingColor == Piece.White) ? 62 : 6;
+                int rq = (kingColor == Piece.White) ? 56 : 0;
+                int q1 = (kingColor == Piece.White) ? 57 : 1;
+                int q2 = (kingColor == Piece.White) ? 58 : 2;
+                int q3 = (kingColor == Piece.White) ? 59 : 3;
                 // Castle Kingside
-                if (i == 60 && boardState[63] == (Piece.Rook | kingColor) && boardState[62] == 0 && boardState[61] == 0) {
-                    legalMoves.add(new Move(i, 62, square, false, true, false));
+                if (i == k && boardState[rk] == (Piece.Rook | kingColor) && boardState[k1] == 0 && boardState[k2] == 0) {
+                    legalMoves.add(new Move(i, k2, square, false, true, false));
                 }
                 // Castle Queenside
-                if (i == 60 && boardState[56] == (Piece.Rook | kingColor) && boardState[57] == 0 && boardState[58] == 0 && boardState[59] == 0) {
-                    legalMoves.add(new Move(i, 58, square, false, true, false));
+                if (i == k && boardState[rq] == (Piece.Rook | kingColor) && boardState[q1] == 0 && boardState[q2] == 0 && boardState[q3] == 0) {
+                    legalMoves.add(new Move(i, q2, square, false, true, false));
                 }
             }
             else if (Piece.isType(square, Piece.Pawn)) {
@@ -138,5 +146,19 @@ public class Bot {
         }
 
         return legalMoves;
+    }
+
+    public int perft(Board board, int depth) {
+        if (depth == 0) return 1;
+
+        ArrayList<Move> moves = GenerateMoves(board);
+        int totalMoves = 0;
+        for (Move move : moves) {
+            board.makeMove(move);
+            totalMoves += perft(board, depth - 1);
+            board.unmakeMove();
+        }
+
+        return totalMoves;
     }
 }

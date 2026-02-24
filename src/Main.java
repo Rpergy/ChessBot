@@ -1,5 +1,3 @@
-import java.util.ArrayList;
-
 public class Main {
     public static void main(String[] args) {
         Board board = new Board();
@@ -7,10 +5,8 @@ public class Main {
 
         Bot bot = new Bot();
 
-        ArrayList<Move> moves = bot.GenerateMoves(board);
-
-        board.printMoves(moves);
-        System.out.println(moves);
-        System.out.println(moves.size());
+        for (int i = 1; i <= 6; i++) {
+            System.out.println(bot.perft(board, i) + " (Depth " + i + ")");
+        }
     }
 }
