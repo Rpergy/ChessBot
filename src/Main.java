@@ -5,8 +5,8 @@ public class Main {
 
         Bot bot = new Bot();
 
-        for (int i = 1; i <= 6; i++) {
-            System.out.println(bot.perft(board, i) + " (Depth " + i + ")");
+        for (int i = 1; i <= 3; i++) {
+            System.out.println(bot.perftCaptures(board, i) + " (Depth " + i + ")");
         }
     }
 }

@@ -161,4 +161,23 @@ public class Bot {
 
         return totalMoves;
     }
+
+    public int perftCaptures(Board board, int depth) {
+        ArrayList<Move> moves = GenerateMoves(board);
+        int captureCount = 0;
+        if (depth == 1) {
+            for (Move m : moves) {
+                if (m.isCapture) captureCount++;
+            }
+            return captureCount;
+        }
+
+        int totalCaptures = 0;
+        for (Move m : moves) {
+            board.makeMove(m);
+            totalCaptures += perftCaptures(board, depth - 1);
+            board.unmakeMove();
+        }
+        return totalCaptures;
+    }
 }
