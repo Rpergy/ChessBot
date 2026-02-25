@@ -7,7 +7,7 @@ public class Main {
 
         Board board = new Board();
         board.loadFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
-//        board.loadFen("rnbqkb1r/pppppppp/5n2/6B1/3P4/8/PPP1PPPP/RN1QKBNR b KQkq - 0 1");
+//        board.loadFen("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  ");
 
         Bot bot = new Bot();
 
@@ -19,18 +19,6 @@ public class Main {
             System.out.println("Depth " + i + ": " + bot.perft(board, i) + " moves");
             System.out.println("         " + bot.perftCaptures(board, i) + " captures");
         }
-
-//        int[] oldBoard = new int[64];
-//
-//        oldBoard[30] = Piece.White | Piece.Pawn;
-//
-//        for (int i = 63; i > -1; i--) {
-//            board.board = Arrays.copyOf(oldBoard, oldBoard.length);
-//            board.board[i] = Piece.Black | Piece.Bishop;
-//            ArrayList<Move> moves = bot.GenerateMoves(board);
-//            board.printMoves(moves);
-//            System.out.println(moves.size());
-//        }
     }
 
     public static void displayGame(int depth, Board board, Bot bot) {

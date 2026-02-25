@@ -84,12 +84,14 @@ public class Bot {
                 int q1 = (kingColor == Piece.White) ? 57 : 1;
                 int q2 = (kingColor == Piece.White) ? 58 : 2;
                 int q3 = (kingColor == Piece.White) ? 59 : 3;
+                boolean validKingside = (Piece.color(square) == Piece.Black && board.blackKingCastle) || (Piece.color(square) == Piece.White && board.whiteKingCastle);
+                boolean validQueenside = (Piece.color(square) == Piece.Black && board.blackQueenCastle) || (Piece.color(square) == Piece.White && board.whiteQueenCastle);
                 // Castle Kingside
-                if (i == k && boardState[rk] == (Piece.Rook | kingColor) && boardState[k1] == 0 && boardState[k2] == 0) {
+                if (validKingside && i == k && boardState[rk] == (Piece.Rook | kingColor) && boardState[k1] == 0 && boardState[k2] == 0) {
                     legalMoves.add(new Move(i, k2, square, false, true, false));
                 }
                 // Castle Queenside
-                if (i == k && boardState[rq] == (Piece.Rook | kingColor) && boardState[q1] == 0 && boardState[q2] == 0 && boardState[q3] == 0) {
+                if (validQueenside && i == k && boardState[rq] == (Piece.Rook | kingColor) && boardState[q1] == 0 && boardState[q2] == 0 && boardState[q3] == 0) {
                     legalMoves.add(new Move(i, q2, square, false, true, false));
                 }
             }

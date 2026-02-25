@@ -67,6 +67,6 @@ public class Move {
         int endRank = 8 - (endIndex / 8);
         String endFile = files[endIndex % 8];
 
-        return startFile + startRank + " " + endFile + endRank + " " + piece + cap + cas + prom + pas;
+        return startFile + startRank + " " + endFile + endRank + " " + piece + cap + cas + prom + pas + "\n";
     }
 }

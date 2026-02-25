@@ -8,6 +8,8 @@ public class Board {
 
     Move lastMove;
 
+    boolean blackKingCastle, blackQueenCastle, whiteKingCastle, whiteQueenCastle;
+
     Board prevBoard;
 
     public Board() {
@@ -15,12 +17,20 @@ public class Board {
         prevBoard = this;
         toMove = Piece.White;
         lastMove = new Move(0, 0, 0);
+        blackKingCastle = true;
+        blackQueenCastle = true;
+        whiteKingCastle = true;
+        whiteQueenCastle = true;
     }
     public Board(Board b) {
         board = Arrays.copyOf(b.board, b.board.length);
         prevBoard = b.prevBoard;
         toMove = b.toMove;
         lastMove = new Move(b.lastMove);
+        blackKingCastle = b.blackKingCastle;
+        blackQueenCastle = b.blackQueenCastle;
+        whiteKingCastle = b.whiteKingCastle;
+        whiteQueenCastle = b.whiteQueenCastle;
     }
     public void loadFen(String fen) {
         HashMap<Character, Integer> fenMap = getFenMap();
@@ -124,6 +134,11 @@ public class Board {
     public void makeMove(Move move) {
         prevBoard = new Board(this);
 
+        if (move.piece == (Piece.Black | Piece.Rook) && move.startIndex == 0) blackQueenCastle = false;
+        if (move.piece == (Piece.Black | Piece.Rook) && move.startIndex == 7) blackKingCastle = false;
+        if (move.piece == (Piece.White | Piece.Rook) && move.startIndex == 56) whiteQueenCastle = false;
+        if (move.piece == (Piece.White | Piece.Rook) && move.startIndex == 63) whiteKingCastle = false;
+
         if (move.isPassant) {
             if (toMove == Piece.White) board[move.endIndex + 8] = 0;
             else board[move.endIndex - 8] = 0;
@@ -163,9 +178,15 @@ public class Board {
     }
     public void unmakeMove() {
         board = Arrays.copyOf(prevBoard.board, prevBoard.board.length);
-        prevBoard = new Board(prevBoard.prevBoard);
-        toMove = (prevBoard.toMove == Piece.White) ? Piece.Black : Piece.White;
+        toMove = prevBoard.toMove;
         lastMove = new Move(prevBoard.lastMove);
+
+        blackKingCastle = prevBoard.blackKingCastle;
+        blackQueenCastle = prevBoard.blackQueenCastle;
+        whiteKingCastle = prevBoard.whiteKingCastle;
+        whiteQueenCastle = prevBoard.whiteQueenCastle;
+
+        prevBoard = new Board(prevBoard.prevBoard);
 
 //        String color = (toMove == Piece.White) ? "White" : "Black";
 //        System.out.println("Unmade move. It is now " + color + "'s turn.");
