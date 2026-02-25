@@ -119,7 +119,7 @@ public class Board {
         else System.out.println("To Move: Black");
 
         System.out.println("Possible moves: " + moves.size());
-        System.out.println(moves);
+        for (Move m : moves) System.out.println(m);
     }
 
     public int[] getState() { return board; }
