@@ -5,15 +5,14 @@ public class Main {
     public static void main(String[] args) {
 
         Board board = new Board();
-        board.loadFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
-
-        int piece = Piece.Rook | Piece.Black;
+        board.loadFen("rnb1k1nr/pppp1ppp/8/2b1p3/2P1P2q/2NP4/PP3PPP/R1BQKBNR b KQkq - 0 1");
 
         Bot bot = new Bot();
 
-        for (int i = 1; i < 7; i++) {
-            System.out.println("Depth " + i + ": " + bot.perft(board, i) + " moves");
-            System.out.println("         " + bot.perftCaptures(board, i) + " captures");
-        }
+        board.print();
+        Move bestMove = bot.findBestMove(board, 3);
+        System.out.println(bestMove);
+        board.makeMove(bestMove);
+        board.print();
     }
 }

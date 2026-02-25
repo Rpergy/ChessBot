@@ -1,6 +1,90 @@
 import java.util.ArrayList;
 
 public class Bot {
+    private static int kingScore = 20000;
+    private static int queenScore = 900;
+    private static int rookScore = 500;
+    private static int bishopScore = 300;
+    private static int knightScore = 300;
+    private static int pawnScore = 100;
+
+    public Move findBestMove(Board board, int depth) {
+        return max(board, depth).move;
+    }
+
+    private SearchMove max(Board board, int depth) {
+        if (depth == 0) return new SearchMove(board.lastMove, evaluateBoard(board));
+
+        int bestScore = Integer.MIN_VALUE;
+        SearchMove bestMove = null;
+
+        ArrayList<Move> moves = generateMoves(board);
+
+        if (moves.size() == 0)
+            return new SearchMove(board.lastMove, Integer.MIN_VALUE);
+
+        for (Move m : moves) {
+            board.makeMove(m);
+            SearchMove score = min(board, depth - 1);
+            if (score.eval > bestScore) {
+                bestScore = score.eval;
+                bestMove = score;
+            }
+            board.unmakeMove();
+        }
+        return bestMove;
+    }
+
+    private SearchMove min(Board board, int depth) {
+        if (depth == 0) return new SearchMove(board.lastMove, -evaluateBoard(board));
+
+        ArrayList<Move> moves = generateMoves(board);
+
+        if (moves.size() == 0)
+            return new SearchMove(board.lastMove, Integer.MAX_VALUE);
+
+        int bestScore = Integer.MAX_VALUE;
+        SearchMove bestMove = null;
+        for (Move m : moves) {
+            board.makeMove(m);
+            SearchMove score = min(board, depth - 1);
+            if (score.eval < bestScore) {
+                bestScore = score.eval;
+                bestMove = score;
+            }
+            board.unmakeMove();
+        }
+        return bestMove;
+    }
+
+    public int evaluateBoard(Board board) {
+        int eval = 0;
+
+        ArrayList<Move> moves = generateMoves(board);
+
+        // Mobility score - The number of legal moves
+        int mobility = moves.size();
+        eval += mobility;
+
+        // Piece score - The value of each piece on the board
+        for (int piece : board.getState()) {
+            if (piece == (Piece.King | board.toMove))
+                eval += kingScore;
+            else if (piece == (Piece.Queen | board.toMove))
+                eval += queenScore;
+            else if (piece == (Piece.Rook | board.toMove))
+                eval += rookScore;
+            else if (piece == (Piece.Bishop | board.toMove))
+                eval += bishopScore;
+            else if (piece == (Piece.Knight | board.toMove))
+                eval += knightScore;
+            else if (piece == (Piece.Pawn | board.toMove))
+                eval += pawnScore;
+        }
+
+        return eval;
+    }
+
     public ArrayList<Move> generatePseudoMoves(Board board) {
         int[] slideOffsets = {-1, 1, -8, 8, -9, -7, 7, 9}; // First half straight, second half diagonal
         int[] knightOffsets = {-17, -15, 10, -6, -10, 6, 15, 17};
@@ -150,7 +234,6 @@ public class Bot {
 
         return pseudoLegalMoves;
     }
-
     public ArrayList<Move> generateMoves(Board board) {
         ArrayList<Move> legalMoves = checkLegality(board, generatePseudoMoves(board));
         return legalMoves;
@@ -322,16 +405,6 @@ public class Bot {
         return legalMoves;
     }
 
-    public Move chooseBestMove(Board board) {
-        ArrayList<Move> moves = generatePseudoMoves(board);
-        for (Move m : moves) {
-            if (m.isCapture) return m;
-        }
-
-        int randIndex = (int)(Math.random() * (moves.size()));
-        return moves.get(randIndex);
-    }
-
     public int perft(Board board, int depth) {
         if (depth == 0) return 1;
 
@@ -345,7 +418,6 @@ public class Bot {
 
         return totalMoves;
     }
-
     public int perftCaptures(Board board, int depth) {
         ArrayList<Move> moves = generateMoves(board);
         int captureCount = 0;
