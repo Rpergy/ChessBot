@@ -20,7 +20,7 @@ public class Board {
         board = Arrays.copyOf(b.board, b.board.length);
         prevBoard = b.prevBoard;
         toMove = b.toMove;
-        lastMove = b.lastMove;
+        lastMove = new Move(b.lastMove);
     }
     public void loadFen(String fen) {
         HashMap<Character, Integer> fenMap = getFenMap();
@@ -107,9 +107,19 @@ public class Board {
 
         if (toMove == Piece.White) System.out.println("To Move: White");
         else System.out.println("To Move: Black");
+
+        System.out.println("Possible moves: " + moves.size());
+        System.out.println(moves);
     }
 
     public int[] getState() { return board; }
+    public static int getManhattanDistance(int p1, int p2) {
+        int rank1 = p1 / 8;
+        int rank2 = p2 / 8;
+        int file1 = p1 % 8;
+        int file2 = p2 % 8;
+        return Math.abs(rank1 - rank2) + Math.abs(file1 - file2);
+    }
 
     public void makeMove(Move move) {
         prevBoard = new Board(this);
@@ -140,18 +150,25 @@ public class Board {
             board[move.endIndex] = move.promotion;
         else
             board[move.endIndex] = move.piece;
+
         board[move.startIndex] = 0;
+
         if (toMove == Piece.White) toMove = Piece.Black;
-        else toMove = Piece.White;
+        else if (toMove == Piece.Black) toMove = Piece.White;
+
+//        String color = (toMove == Piece.White) ? "White" : "Black";
+//        System.out.println("Made move. It is now " + color + "'s turn.");
 
         lastMove = move;
     }
-
     public void unmakeMove() {
         board = Arrays.copyOf(prevBoard.board, prevBoard.board.length);
-        prevBoard = prevBoard.prevBoard;
-        toMove = prevBoard.toMove;
-        lastMove = prevBoard.lastMove;
+        prevBoard = new Board(prevBoard.prevBoard);
+        toMove = (prevBoard.toMove == Piece.White) ? Piece.Black : Piece.White;
+        lastMove = new Move(prevBoard.lastMove);
+
+//        String color = (toMove == Piece.White) ? "White" : "Black";
+//        System.out.println("Unmade move. It is now " + color + "'s turn.");
     }
 
     private static HashMap<Character, Integer> getFenMap() {

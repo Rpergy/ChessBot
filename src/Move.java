@@ -61,6 +61,12 @@ public class Move {
         else if (Piece.compareType(promotion, Piece.Rook)) prom = 'r';
         else if (Piece.compareType(promotion, Piece.Knight)) prom = 'n';
 
-        return startIndex + " " + endIndex + " " + piece + cap + cas + prom + pas;
+        String[] files = {"a", "b", "c", "d", "e", "f", "g", "h"};
+        int startRank = 8 - (startIndex / 8);
+        String startFile = files[startIndex % 8];
+        int endRank = 8 - (endIndex / 8);
+        String endFile = files[endIndex % 8];
+
+        return startFile + startRank + " " + endFile + endRank + " " + piece + cap + cas + prom + pas;
     }
 }

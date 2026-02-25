@@ -25,7 +25,7 @@ public class Bot {
                         target = currentIndex + offset;
                         rankCheck = (Math.abs(offset) > 1 || currentIndex / 8 == target / 8);
                     }
-
+                    // Check for capture
                     if (target >= 0 && target < 64 && rankCheck && !Piece.compareColor(square, boardState[target])) {
                         legalMoves.add(new Move(i, target, square, true, false, false));
                     }
@@ -36,19 +36,20 @@ public class Bot {
                     int currentIndex = i;
                     int offset = slideOffsets[j];
                     int target = currentIndex + offset;
-                    boolean edgeCheck = (currentIndex % 8 != 0) && ((currentIndex + 1) % 8 != 0);
-                    while (target >= 0 && target < 64 && edgeCheck && boardState[target] == 0) {
+                    int moveDist = Board.getManhattanDistance(currentIndex, target);
+                    while (target >= 0 && target < 64 && moveDist <= 2 && boardState[target] == 0) {
                         legalMoves.add(new Move(i, target, square));
                         currentIndex += offset;
                         target = currentIndex + offset;
-                        edgeCheck = (currentIndex % 8 != 0) && ((currentIndex + 1) % 8 != 0);
+                        moveDist = Board.getManhattanDistance(currentIndex, target);
                     }
 
-                    if (target >= 0 && target < 64 && edgeCheck && !Piece.compareColor(square, boardState[target])) {
+                    if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(square, boardState[target])) {
                         legalMoves.add(new Move(i, target, square, true, false, false));
                     }
                 }
             }
+
             if (Piece.isType(square, Piece.Knight)) {
                 for (int offset : knightOffsets) {
                     int target = i + offset;
@@ -127,10 +128,10 @@ public class Bot {
                 }
 
                 // Pawn first move
-                if (pawnColor == Piece.White && (i / 8 == 6) && boardState[i - 16] == 0) {
+                if (pawnColor == Piece.White && (i / 8 == 6) && boardState[i - 16] == 0 && boardState[i - 8] == 0) {
                     legalMoves.add(new Move(i, i - 16, square));
                 }
-                else if (pawnColor == Piece.Black && (i / 8 == 1) && boardState[i + 16] == 0) {
+                else if (pawnColor == Piece.Black && (i / 8 == 1) && boardState[i + 16] == 0 && boardState[i + 8] == 0) {
                     legalMoves.add(new Move(i, i + 16, square));
                 }
 
@@ -146,6 +147,16 @@ public class Bot {
         }
 
         return legalMoves;
+    }
+
+    public Move chooseBestMove(Board board) {
+        ArrayList<Move> moves = GenerateMoves(board);
+        for (Move m : moves) {
+            if (m.isCapture) return m;
+        }
+
+        int randIndex = (int)(Math.random() * (moves.size()));
+        return moves.get(randIndex);
     }
 
     public int perft(Board board, int depth) {
