@@ -28,7 +28,7 @@ public class Bot {
             SearchMove score = min(board, depth - 1);
             if (score.eval > bestScore) {
                 bestScore = score.eval;
-                bestMove = score;
+                bestMove = new SearchMove(board.lastMove, score.eval);
             }
             board.unmakeMove();
         }
@@ -50,7 +50,7 @@ public class Bot {
             SearchMove score = min(board, depth - 1);
             if (score.eval < bestScore) {
                 bestScore = score.eval;
-                bestMove = score;
+                bestMove = new SearchMove(board.lastMove, score.eval);
             }
             board.unmakeMove();
         }
@@ -168,8 +168,8 @@ public class Bot {
                 int q1 = (kingColor == Piece.White) ? 57 : 1;
                 int q2 = (kingColor == Piece.White) ? 58 : 2;
                 int q3 = (kingColor == Piece.White) ? 59 : 3;
-                boolean validKingside = (Piece.color(square) == Piece.Black && board.blackKingCastle) || (Piece.color(square) == Piece.White && board.whiteKingCastle);
-                boolean validQueenside = (Piece.color(square) == Piece.Black && board.blackQueenCastle) || (Piece.color(square) == Piece.White && board.whiteQueenCastle);
+                boolean validKingside = (Piece.color(square) == Piece.Black && board.blackKingCastle && board.blackCastle) || (Piece.color(square) == Piece.White && board.whiteKingCastle && board.whiteCastle);
+                boolean validQueenside = (Piece.color(square) == Piece.Black && board.blackQueenCastle && board.blackCastle) || (Piece.color(square) == Piece.White && board.whiteQueenCastle && board.whiteCastle);
                 // Castle Kingside
                 if (validKingside && i == k && boardState[rk] == (Piece.Rook | kingColor) && boardState[k1] == 0 && boardState[k2] == 0) {
                     pseudoLegalMoves.add(new Move(i, k2, square, false, true, false));
@@ -323,8 +323,8 @@ public class Bot {
                 int q1 = (kingColor == Piece.White) ? 57 : 1;
                 int q2 = (kingColor == Piece.White) ? 58 : 2;
                 int q3 = (kingColor == Piece.White) ? 59 : 3;
-                boolean validKingside = (Piece.color(square) == Piece.Black && board.blackKingCastle) || (Piece.color(square) == Piece.White && board.whiteKingCastle);
-                boolean validQueenside = (Piece.color(square) == Piece.Black && board.blackQueenCastle) || (Piece.color(square) == Piece.White && board.whiteQueenCastle);
+                boolean validKingside = (Piece.color(square) == Piece.Black && board.blackKingCastle && board.blackCastle) || (Piece.color(square) == Piece.White && board.whiteKingCastle && board.whiteCastle);
+                boolean validQueenside = (Piece.color(square) == Piece.Black && board.blackQueenCastle && board.blackCastle) || (Piece.color(square) == Piece.White && board.whiteQueenCastle && board.whiteCastle);
                 // Castle Kingside
                 if (validKingside && i == k && boardState[rk] == (Piece.Rook | kingColor) && boardState[k1] == 0 && boardState[k2] == 0) {
                     squaresBoard.board[k2] = true;
@@ -403,6 +403,14 @@ public class Bot {
         }
 
         return legalMoves;
+    }
+
+    public Move validateMove(Board board, int startIndex, int endIndex) {
+        for (Move m : generateMoves(board)) {
+            if (m.startIndex == startIndex && m.endIndex == endIndex)
+                return m;
+        }
+        return null;
     }
 
     public int perft(Board board, int depth) {

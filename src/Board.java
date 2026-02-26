@@ -8,7 +8,7 @@ public class Board {
 
     Move lastMove;
 
-    boolean blackKingCastle, blackQueenCastle, whiteKingCastle, whiteQueenCastle;
+    boolean blackKingCastle, blackQueenCastle, whiteKingCastle, whiteQueenCastle, blackCastle, whiteCastle;
 
     Board prevBoard;
 
@@ -21,6 +21,8 @@ public class Board {
         blackQueenCastle = true;
         whiteKingCastle = true;
         whiteQueenCastle = true;
+        blackCastle = true;
+        whiteCastle = true;
     }
     public Board(Board b) {
         board = Arrays.copyOf(b.board, b.board.length);
@@ -31,6 +33,8 @@ public class Board {
         blackQueenCastle = b.blackQueenCastle;
         whiteKingCastle = b.whiteKingCastle;
         whiteQueenCastle = b.whiteQueenCastle;
+        blackCastle = b.blackCastle;
+        whiteCastle = b.whiteCastle;
     }
     public void loadFen(String fen) {
         HashMap<Character, Integer> fenMap = getFenMap();
@@ -138,6 +142,8 @@ public class Board {
         if (move.piece == (Piece.Black | Piece.Rook) && move.startIndex == 7) blackKingCastle = false;
         if (move.piece == (Piece.White | Piece.Rook) && move.startIndex == 56) whiteQueenCastle = false;
         if (move.piece == (Piece.White | Piece.Rook) && move.startIndex == 63) whiteKingCastle = false;
+        if (move.piece == (Piece.White | Piece.King)) whiteCastle = false;
+        if (move.piece == (Piece.Black | Piece.King)) blackCastle = false;
 
         if (move.isPassant) {
             if (toMove == Piece.White) board[move.endIndex + 8] = 0;
@@ -185,6 +191,8 @@ public class Board {
         blackQueenCastle = prevBoard.blackQueenCastle;
         whiteKingCastle = prevBoard.whiteKingCastle;
         whiteQueenCastle = prevBoard.whiteQueenCastle;
+        whiteCastle = prevBoard.whiteCastle;
+        blackCastle = prevBoard.blackCastle;
 
         prevBoard = new Board(prevBoard.prevBoard);
 
