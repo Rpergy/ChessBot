@@ -8,81 +8,75 @@ public class Bot {
     private static int knightScore = 300;
     private static int pawnScore = 100;
 
+    private static int mobilityMultiplier = 5;
+
     public Move findBestMove(Board board, int depth) {
-        return max(board, depth).move;
+        return rootNegamax(board, depth);
     }
 
-    private SearchMove max(Board board, int depth) {
-        if (depth == 0) return new SearchMove(board.lastMove, evaluateBoard(board));
+    private Move rootNegamax(Board board, int depth) {
+        if (depth == 0) return null;
 
-        int bestScore = Integer.MIN_VALUE;
-        SearchMove bestMove = null;
+        int max = Integer.MIN_VALUE;
+        Move maxMove = null;
 
         ArrayList<Move> moves = generateMoves(board);
-
-        if (moves.size() == 0)
-            return new SearchMove(board.lastMove, Integer.MIN_VALUE);
-
         for (Move m : moves) {
             board.makeMove(m);
-            SearchMove score = min(board, depth - 1);
-            if (score.eval > bestScore) {
-                bestScore = score.eval;
-                bestMove = new SearchMove(board.lastMove, score.eval);
-            }
+            int score = -negamax(board, depth - 1);
             board.unmakeMove();
+
+            if (score > max) {
+                max = score;
+                maxMove = m;
+            }
         }
-        return bestMove;
+
+        return maxMove;
     }
 
-    private SearchMove min(Board board, int depth) {
-        if (depth == 0) return new SearchMove(board.lastMove, -evaluateBoard(board));
+    private int negamax(Board board, int depth) {
+        if (depth == 0) return evaluateBoard(board);
+
+        int max = Integer.MIN_VALUE;
 
         ArrayList<Move> moves = generateMoves(board);
-
-        if (moves.size() == 0)
-            return new SearchMove(board.lastMove, Integer.MAX_VALUE);
-
-        int bestScore = Integer.MAX_VALUE;
-        SearchMove bestMove = null;
         for (Move m : moves) {
             board.makeMove(m);
-            SearchMove score = min(board, depth - 1);
-            if (score.eval < bestScore) {
-                bestScore = score.eval;
-                bestMove = new SearchMove(board.lastMove, score.eval);
-            }
+            int score = -negamax(board, depth - 1);
             board.unmakeMove();
+
+            if (score > max) max = score;
         }
-        return bestMove;
+
+        return max;
     }
 
     public int evaluateBoard(Board board) {
         int eval = 0;
 
-        ArrayList<Move> moves = generateMoves(board);
+        ArrayList<Move> whiteMoves = generateMovesColor(board, Piece.White);
+        ArrayList<Move> blackMoves = generateMovesColor(board, Piece.Black);
 
-        // Mobility score - The number of legal moves
-        int mobility = moves.size();
-        eval += mobility;
+        // Material score - The number of pieces available
+        int kingDiff = kingScore * (board.pieceCounts.getOrDefault((Piece.King | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.King | Piece.Black), 0));
+        int queenDiff = queenScore * (board.pieceCounts.getOrDefault((Piece.Queen | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Queen | Piece.Black), 0));
+        int rookDiff = rookScore * (board.pieceCounts.getOrDefault((Piece.Rook | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Rook | Piece.Black), 0));
+        int bishopDiff = bishopScore * (board.pieceCounts.getOrDefault((Piece.Bishop | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Bishop | Piece.Black), 0));
+        int knightDiff = knightScore * (board.pieceCounts.getOrDefault((Piece.Knight | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Knight | Piece.Black), 0));
+        int pawnDiff = pawnScore * (board.pieceCounts.getOrDefault((Piece.Pawn | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Pawn | Piece.Black), 0));
 
-        // Piece score - The value of each piece on the board
-        for (int piece : board.getState()) {
-            if (piece == (Piece.King | board.toMove))
-                eval += kingScore;
-            else if (piece == (Piece.Queen | board.toMove))
-                eval += queenScore;
-            else if (piece == (Piece.Rook | board.toMove))
-                eval += rookScore;
-            else if (piece == (Piece.Bishop | board.toMove))
-                eval += bishopScore;
-            else if (piece == (Piece.Knight | board.toMove))
-                eval += knightScore;
-            else if (piece == (Piece.Pawn | board.toMove))
-                eval += pawnScore;
-        }
+        int materialScore = kingDiff + queenDiff + rookDiff + bishopDiff + knightDiff + pawnDiff;
+        eval += materialScore;
 
-        return eval;
+        // Mobility score - The number of moves available
+        int mobilityScore = (whiteMoves.size() - blackMoves.size()) * mobilityMultiplier;
+        eval += mobilityScore;
+
+        // The negamax algorithm requires white and black moves to be of opposite signs
+        int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
+
+        return relativeMultiplier * eval;
     }
 
     public ArrayList<Move> generatePseudoMoves(Board board) {
@@ -237,6 +231,13 @@ public class Bot {
     public ArrayList<Move> generateMoves(Board board) {
         ArrayList<Move> legalMoves = checkLegality(board, generatePseudoMoves(board));
         return legalMoves;
+    }
+    public ArrayList<Move> generateMovesColor(Board board, int color) {
+        int oldState = board.toMove;
+        board.toMove = color;
+        ArrayList<Move> moves = generateMoves(board);
+        board.toMove = oldState;
+        return moves;
     }
 
     public Bitboard getAttackedSquares(Board board, int color) {
