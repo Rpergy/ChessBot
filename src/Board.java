@@ -6,6 +6,8 @@ public class Board {
     int[] board;
     int toMove;
 
+    HashMap<Integer, Integer> pieceCounts;
+
     Move lastMove;
 
     boolean blackKingCastle, blackQueenCastle, whiteKingCastle, whiteQueenCastle, blackCastle, whiteCastle;
@@ -23,6 +25,7 @@ public class Board {
         whiteQueenCastle = true;
         blackCastle = true;
         whiteCastle = true;
+        pieceCounts = new HashMap<>();
     }
     public Board(Board b) {
         board = Arrays.copyOf(b.board, b.board.length);
@@ -35,6 +38,7 @@ public class Board {
         whiteQueenCastle = b.whiteQueenCastle;
         blackCastle = b.blackCastle;
         whiteCastle = b.whiteCastle;
+        pieceCounts = new HashMap<>(b.pieceCounts);
     }
     public void loadFen(String fen) {
         HashMap<Character, Integer> fenMap = getFenMap();
@@ -49,6 +53,7 @@ public class Board {
                     index += offset;
                 } catch (NumberFormatException e) {
                     board[index] = fenMap.get(square);
+                    pieceCounts.put(fenMap.get(square), pieceCounts.getOrDefault(fenMap.get(square) + 1, 1));
                     index += 1;
                 }
             }
@@ -194,10 +199,9 @@ public class Board {
         whiteCastle = prevBoard.whiteCastle;
         blackCastle = prevBoard.blackCastle;
 
-        prevBoard = new Board(prevBoard.prevBoard);
+        pieceCounts = new HashMap<>(prevBoard.pieceCounts);
 
-//        String color = (toMove == Piece.White) ? "White" : "Black";
-//        System.out.println("Unmade move. It is now " + color + "'s turn.");
+        prevBoard = new Board(prevBoard.prevBoard);
     }
 
     private static HashMap<Character, Integer> getFenMap() {

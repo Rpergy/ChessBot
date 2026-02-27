@@ -1,7 +1,7 @@
 import java.util.Scanner;
 
 public class Game {
-    public static int SEARCH_DEPTH = 3;
+    public static int SEARCH_DEPTH = 4;
 
     public static void main(String[] args) {
         playPlayer();
@@ -9,7 +9,7 @@ public class Game {
 
     public static void playItself() {
         Board board = new Board();
-        board.loadFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        board.loadFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
 
         Bot bot = new Bot();
 
@@ -30,7 +30,7 @@ public class Game {
         Scanner sc = new Scanner(System.in);
 
         Board board = new Board();
-        board.loadFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+//        board.loadFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
         Bot bot = new Bot();
 

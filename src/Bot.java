@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class Bot {
     private static int kingScore = 20000;
@@ -9,12 +10,13 @@ public class Bot {
     private static int pawnScore = 100;
 
     private static int mobilityMultiplier = 5;
+    private static int checkScore = 1000000000;
 
     public Move findBestMove(Board board, int depth) {
-        return rootNegamax(board, depth);
+        return rootNegamax(board, depth, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
-    private Move rootNegamax(Board board, int depth) {
+    private Move rootNegamax(Board board, int depth, int alpha, int beta) {
         if (depth == 0) return null;
 
         int max = Integer.MIN_VALUE;
@@ -23,30 +25,41 @@ public class Bot {
         ArrayList<Move> moves = generateMoves(board);
         for (Move m : moves) {
             board.makeMove(m);
-            int score = -negamax(board, depth - 1);
+            int score = -negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove();
 
             if (score > max) {
                 max = score;
                 maxMove = m;
+                if (score > alpha) alpha = score;
             }
+            if (score >= beta) return maxMove;
         }
 
         return maxMove;
     }
 
-    private int negamax(Board board, int depth) {
+    private int negamax(Board board, int depth, int alpha, int beta) {
         if (depth == 0) return evaluateBoard(board);
 
         int max = Integer.MIN_VALUE;
 
         ArrayList<Move> moves = generateMoves(board);
+        if (moves.size() == 0) {
+            if (inCheck(board, board.toMove)) return -checkScore;
+            else return 0;
+        }
+
         for (Move m : moves) {
             board.makeMove(m);
-            int score = -negamax(board, depth - 1);
+            int score = -negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove();
 
-            if (score > max) max = score;
+            if (score > max) {
+                max = score;
+                if (score > alpha) alpha = score;
+            }
+            if (score >= beta) return max;
         }
 
         return max;
@@ -230,6 +243,7 @@ public class Bot {
     }
     public ArrayList<Move> generateMoves(Board board) {
         ArrayList<Move> legalMoves = checkLegality(board, generatePseudoMoves(board));
+        Collections.shuffle(legalMoves);
         return legalMoves;
     }
     public ArrayList<Move> generateMovesColor(Board board, int color) {
@@ -240,146 +254,32 @@ public class Bot {
         return moves;
     }
 
-    public Bitboard getAttackedSquares(Board board, int color) {
-        int[] slideOffsets = {-1, 1, -8, 8, -9, -7, 7, 9}; // First half straight, second half diagonal
-        int[] knightOffsets = {-17, -15, 10, -6, -10, 6, 15, 17};
-        int[] kingOffsets = {-1, 1, -9, -8, -7, 7, 8, 9};
-        int[] pawnAttackOffsets = {9, 7};
+    public boolean inCheck(Board board, int color) {
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+        Bitboard attackedSquares = getAttackedSquares(board, otherColor);
+        for (int i = 0; i < 64; i++) {
+            int square = board.getState()[i];
+            boolean isAttacked = attackedSquares.board[i];
+            if (square == (Piece.King | color) && isAttacked) return true;
+        }
+        return false;
+    }
 
+    public boolean inCheckmate(Board board, int color) {
+        if (generateMovesColor(board, color).size() != 0) return false;
+        return inCheck(board, color);
+    }
+
+    public Bitboard getAttackedSquares(Board board, int color) {
         Bitboard squaresBoard = new Bitboard();
 
-        int[] boardState = board.getState();
-        for (int i = 0; i < boardState.length; i++) {
-            int square = boardState[i];
-            if (square == 0 || !Piece.isColor(square, color)) continue;
+        int oldState = board.toMove;
+        board.toMove = color;
+        ArrayList<Move> moves = generateMoves(board);
+        board.toMove = oldState;
 
-            if (Piece.isDiagonalSliding(square)) {
-                for (int j = 4; j < 8; j++) {
-                    int currentIndex = i;
-                    int offset = slideOffsets[j];
-                    int target = currentIndex + offset;
-                    int moveDist = Board.getManhattanDistance(currentIndex, target);
-                    while (target >= 0 && target < 64 && moveDist <= 2 && boardState[target] == 0) {
-                        squaresBoard.board[target] = true;
-                        currentIndex += offset;
-                        target = currentIndex + offset;
-                        moveDist = Board.getManhattanDistance(currentIndex, target);
-                    }
-
-                    if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(square, boardState[target])) {
-                        squaresBoard.board[target] = true;
-                    }
-                }
-            }
-            if (Piece.isDiagonalSliding(square)) {
-                for (int j = 4; j < 8; j++) {
-                    int currentIndex = i;
-                    int offset = slideOffsets[j];
-                    int target = currentIndex + offset;
-                    int moveDist = Board.getManhattanDistance(currentIndex, target);
-                    while (target >= 0 && target < 64 && moveDist <= 2 && boardState[target] == 0) {
-                        squaresBoard.board[target] = true;
-                        currentIndex += offset;
-                        target = currentIndex + offset;
-                        moveDist = Board.getManhattanDistance(currentIndex, target);
-                    }
-
-                    if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(square, boardState[target])) {
-                        squaresBoard.board[target] = true;
-                    }
-                }
-            }
-
-            if (Piece.isType(square, Piece.Knight)) {
-                for (int offset : knightOffsets) {
-                    int target = i + offset;
-                    int squareFile = i % 8;
-                    int targetFile = target % 8;
-                    if (target >= 0 && target <= 63 && Math.abs(squareFile - targetFile) <= 2) {
-                        if (boardState[target] == 0)
-                            squaresBoard.board[target] = true;
-                        else if (!Piece.compareColor(square, boardState[target]))
-                            squaresBoard.board[target] = true;
-                    }
-                }
-            }
-            else if (Piece.isType(square, Piece.King)) {
-                for (int offset : kingOffsets) {
-                    int target = i + offset;
-                    int squareFile = i % 8;
-                    int targetFile = target % 8;
-                    if (target >= 0 && target <= 63 && Math.abs(squareFile - targetFile) <= 1) {
-                        if (boardState[target] == 0)
-                            squaresBoard.board[target] = true;
-                        else if (!Piece.compareColor(square, boardState[target]))
-                            squaresBoard.board[target] = true;
-                    }
-                }
-                int kingColor = Piece.color(square);
-                int k = (kingColor == Piece.White) ? 60 : 4;
-                int rk = (kingColor == Piece.White) ? 63 : 7;
-                int k1 = (kingColor == Piece.White) ? 61 : 5;
-                int k2 = (kingColor == Piece.White) ? 62 : 6;
-                int rq = (kingColor == Piece.White) ? 56 : 0;
-                int q1 = (kingColor == Piece.White) ? 57 : 1;
-                int q2 = (kingColor == Piece.White) ? 58 : 2;
-                int q3 = (kingColor == Piece.White) ? 59 : 3;
-                boolean validKingside = (Piece.color(square) == Piece.Black && board.blackKingCastle && board.blackCastle) || (Piece.color(square) == Piece.White && board.whiteKingCastle && board.whiteCastle);
-                boolean validQueenside = (Piece.color(square) == Piece.Black && board.blackQueenCastle && board.blackCastle) || (Piece.color(square) == Piece.White && board.whiteQueenCastle && board.whiteCastle);
-                // Castle Kingside
-                if (validKingside && i == k && boardState[rk] == (Piece.Rook | kingColor) && boardState[k1] == 0 && boardState[k2] == 0) {
-                    squaresBoard.board[k2] = true;
-                }
-                // Castle Queenside
-                if (validQueenside && i == k && boardState[rq] == (Piece.Rook | kingColor) && boardState[q1] == 0 && boardState[q2] == 0 && boardState[q3] == 0) {
-                    squaresBoard.board[q2] = true;
-                }
-            }
-            else if (Piece.isType(square, Piece.Pawn)) {
-                int pawnColor = Piece.color(square);
-                int direction = (pawnColor == Piece.White) ? -1 : 1;
-                int target = i + direction * 8;
-                if (target >= 0 && target < 64 && boardState[target] == 0) { // Straight
-                    if (target / 8 == 0 || target / 8 == 7) { // Promotion
-                        squaresBoard.board[target] = true;
-                    }
-                    else { // Normal
-                        squaresBoard.board[target] = true;
-                    }
-                }
-
-                for (int offset : pawnAttackOffsets) { // Attack
-                    target = i + direction * offset;
-                    int squareFile = i % 8;
-                    int targetFile = target % 8;
-                    if (target < 0 || target > 63 || Math.abs(squareFile - targetFile) > 1) continue;
-                    if (!Piece.compareColor(boardState[target], square) && boardState[target] != 0) { // Valid attack
-                        if (target / 8 == 0 || target / 8 == 7) { // Promotion
-                            squaresBoard.board[target] = true;
-                        }
-                        else { // Normal
-                            squaresBoard.board[target] = true;
-                        }
-                    }
-                }
-
-                // Pawn first move
-                if (pawnColor == Piece.White && (i / 8 == 6) && boardState[i - 16] == 0 && boardState[i - 8] == 0) {
-                    squaresBoard.board[i - 16] = true;
-                }
-                else if (pawnColor == Piece.Black && (i / 8 == 1) && boardState[i + 16] == 0 && boardState[i + 8] == 0) {
-                    squaresBoard.board[i + 16] = true;
-                }
-
-                // En-passant
-                Move lastMove = board.lastMove;
-                boolean whiteValidPlacement = (lastMove.endIndex == i - 1 || lastMove.endIndex == i + 1) && (lastMove.startIndex == i - 17 || lastMove.startIndex == i - 15);
-                boolean blackValidPlacement = (lastMove.endIndex == i - 1 || lastMove.endIndex == i + 1) && (lastMove.startIndex == i + 17 || lastMove.startIndex == i + 15);
-                if (pawnColor == Piece.White && (i / 8) == 3 && lastMove.piece == (Piece.Pawn | Piece.Black) && whiteValidPlacement)
-                    squaresBoard.board[lastMove.endIndex - 8] = true;
-                else if (pawnColor == Piece.Black && (i / 8) == 4 && lastMove.piece == (Piece.Pawn | Piece.White) && blackValidPlacement)
-                    squaresBoard.board[lastMove.endIndex + 8] = true;
-            }
+        for (Move m : moves) {
+            squaresBoard.board[m.endIndex] = true;
         }
 
         return squaresBoard;
