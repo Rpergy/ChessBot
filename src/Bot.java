@@ -2,21 +2,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 public class Bot {
-    private static int kingScore = 20000;
-    private static int queenScore = 900;
-    private static int rookScore = 500;
-    private static int bishopScore = 300;
-    private static int knightScore = 300;
+    private static int kingScore = 200000;
+    private static int queenScore = 1500;
+    private static int rookScore = 700;
+    private static int bishopScore = 350;
+    private static int knightScore = 350;
     private static int pawnScore = 100;
 
     private static int mobilityMultiplier = 5;
     private static int checkScore = 1000000000;
 
-    public Move findBestMove(Board board, int depth) {
+    public static Move findBestMove(Board board, int depth) {
         return rootNegamax(board, depth, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
-    private Move rootNegamax(Board board, int depth, int alpha, int beta) {
+    private static Move rootNegamax(Board board, int depth, int alpha, int beta) {
         if (depth == 0) return null;
 
         int max = Integer.MIN_VALUE;
@@ -39,7 +39,7 @@ public class Bot {
         return maxMove;
     }
 
-    private int negamax(Board board, int depth, int alpha, int beta) {
+    private static int negamax(Board board, int depth, int alpha, int beta) {
         if (depth == 0) return evaluateBoard(board);
 
         int max = Integer.MIN_VALUE;
@@ -65,7 +65,7 @@ public class Bot {
         return max;
     }
 
-    public int evaluateBoard(Board board) {
+    public static int evaluateBoard(Board board) {
         int eval = 0;
 
         ArrayList<Move> whiteMoves = generateMovesColor(board, Piece.White);
@@ -92,7 +92,7 @@ public class Bot {
         return relativeMultiplier * eval;
     }
 
-    public ArrayList<Move> generatePseudoMoves(Board board) {
+    public static ArrayList<Move> generatePseudoMoves(Board board) {
         int[] slideOffsets = {-1, 1, -8, 8, -9, -7, 7, 9}; // First half straight, second half diagonal
         int[] knightOffsets = {-17, -15, 10, -6, -10, 6, 15, 17};
         int[] kingOffsets = {-1, 1, -9, -8, -7, 7, 8, 9};
@@ -241,12 +241,11 @@ public class Bot {
 
         return pseudoLegalMoves;
     }
-    public ArrayList<Move> generateMoves(Board board) {
+    public static ArrayList<Move> generateMoves(Board board) {
         ArrayList<Move> legalMoves = checkLegality(board, generatePseudoMoves(board));
-        Collections.shuffle(legalMoves);
         return legalMoves;
     }
-    public ArrayList<Move> generateMovesColor(Board board, int color) {
+    public static ArrayList<Move> generateMovesColor(Board board, int color) {
         int oldState = board.toMove;
         board.toMove = color;
         ArrayList<Move> moves = generateMoves(board);
@@ -254,7 +253,7 @@ public class Bot {
         return moves;
     }
 
-    public boolean inCheck(Board board, int color) {
+    public static boolean inCheck(Board board, int color) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
         Bitboard attackedSquares = getAttackedSquares(board, otherColor);
         for (int i = 0; i < 64; i++) {
@@ -265,12 +264,12 @@ public class Bot {
         return false;
     }
 
-    public boolean inCheckmate(Board board, int color) {
+    public static boolean inCheckmate(Board board, int color) {
         if (generateMovesColor(board, color).size() != 0) return false;
         return inCheck(board, color);
     }
 
-    public Bitboard getAttackedSquares(Board board, int color) {
+    public static Bitboard getAttackedSquares(Board board, int color) {
         Bitboard squaresBoard = new Bitboard();
 
         int oldState = board.toMove;
@@ -285,7 +284,7 @@ public class Bot {
         return squaresBoard;
     }
 
-    private ArrayList<Move> checkLegality(Board board, ArrayList<Move> moves) {
+    private static ArrayList<Move> checkLegality(Board board, ArrayList<Move> moves) {
         ArrayList<Move> legalMoves = new ArrayList<>();
 
         for (Move m : moves) {
@@ -306,7 +305,7 @@ public class Bot {
         return legalMoves;
     }
 
-    public Move validateMove(Board board, int startIndex, int endIndex) {
+    public static Move validateMove(Board board, int startIndex, int endIndex) {
         for (Move m : generateMoves(board)) {
             if (m.startIndex == startIndex && m.endIndex == endIndex)
                 return m;
@@ -314,7 +313,7 @@ public class Bot {
         return null;
     }
 
-    public int perft(Board board, int depth) {
+    public static int perft(Board board, int depth) {
         if (depth == 0) return 1;
 
         ArrayList<Move> moves = generateMoves(board);
@@ -327,7 +326,7 @@ public class Bot {
 
         return totalMoves;
     }
-    public int perftCaptures(Board board, int depth) {
+    public static int perftCaptures(Board board, int depth) {
         ArrayList<Move> moves = generateMoves(board);
         int captureCount = 0;
         if (depth == 1) {

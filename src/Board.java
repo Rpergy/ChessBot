@@ -231,7 +231,7 @@ public class Board {
 
         return inverse;
     }
-    private static HashMap<Integer, Character> getPieceCharMap() {
+    public static HashMap<Integer, Character> getPieceCharMap() {
         HashMap<Integer, Character> inverseFenMap = new HashMap<>();
 
         inverseFenMap.put(Piece.Rook   | Piece.Black, '♜');

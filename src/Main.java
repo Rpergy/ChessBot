@@ -8,10 +8,8 @@ public class Main {
         Board board = new Board();
         board.loadFen("rnb1k1nr/pppp1ppp/8/2b1p3/2P1P2q/2NP4/PP3PPP/R1BQKBNR b KQkq - 0 1"); // Scholar's Mate
 
-        Bot bot = new Bot();
-
         board.print();
-        Move bestMove = bot.findBestMove(board, 3);
+        Move bestMove = Bot.findBestMove(board, 3);
         System.out.println(bestMove);
         board.makeMove(bestMove);
         board.print();
