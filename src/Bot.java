@@ -12,6 +12,7 @@ public class Bot {
     private static int mobilityMultiplier = 5;
     private static int checkScore = 1000000000;
 
+
     public static Move findBestMove(Board board, int depth) {
         return rootNegamax(board, depth, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
