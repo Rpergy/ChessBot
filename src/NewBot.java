@@ -391,13 +391,18 @@ public class NewBot {
         return totalMoves;
     }
 
+    /**
+     * Runs a performance test on the current board to calculate the number of captures
+     * @param depth The depth to search to
+     * @return The number of captures up to the given depth
+     */
     public int perftCaptures(int depth) {
         if (depth == 0) return 0;
         ArrayList<Move> moves = generateMoves();
         int captureCount = 0;
         if (depth == 1) {
             for (Move m : moves) {
-                if (m.isPassant) captureCount++;
+                if (m.isCapture) captureCount++;
             }
             return captureCount;
         }

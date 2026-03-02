@@ -23,12 +23,6 @@ public class NewBoard {
         previousState = this;
         toMove = 0;
         lastMove = null;
-        blackKingCastle = true;
-        blackQueenCastle = true;
-        whiteKingCastle = true;
-        whiteQueenCastle = true;
-        blackCastle = true;
-        whiteCastle = true;
 
         piecePositions = new HashMap<>();
 
@@ -82,6 +76,35 @@ public class NewBoard {
 
                     index += 1;
                 }
+            }
+        }
+
+        if (fen.split(" ").length > 2) {
+            String castling = fen.split(" ")[2];
+            if (castling.indexOf('K') != -1) {
+                whiteCastle = true;
+                whiteKingCastle = true;
+            }
+            if (castling.indexOf('Q') != -1) {
+                whiteCastle = true;
+                whiteQueenCastle = true;
+            }
+            if (castling.indexOf('K') == -1 && castling.indexOf('Q') == -1) {
+                whiteCastle = false;
+                whiteKingCastle = false;
+            }
+
+            if (castling.indexOf('k') != -1) {
+                blackCastle = true;
+                blackKingCastle = true;
+            }
+            if (castling.indexOf('q') != -1) {
+                blackCastle = true;
+                blackQueenCastle = true;
+            }
+            if (castling.indexOf('k') == -1 && castling.indexOf('q') == -1) {
+                blackCastle = false;
+                blackKingCastle = false;
             }
         }
 
@@ -268,6 +291,11 @@ public class NewBoard {
         return inverse;
     }
 
+    /**
+     * Copies a piece position map by value
+     * @param original The map to be copied
+     * @return An identical piece position map
+     */
     private static HashMap<Integer, ArrayList<Integer>> copyPiecePositionMap(HashMap<Integer, ArrayList<Integer>> original) {
         HashMap<Integer, ArrayList<Integer>> copy = new HashMap<>();
 
