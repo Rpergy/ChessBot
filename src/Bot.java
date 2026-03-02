@@ -1,32 +1,50 @@
 import java.util.ArrayList;
-import java.util.Collections;
 
 public class Bot {
-    private static int kingScore = 200000;
-    private static int queenScore = 1500;
-    private static int rookScore = 700;
-    private static int bishopScore = 350;
-    private static int knightScore = 350;
-    private static int pawnScore = 100;
+    private Board board;
 
-    private static int mobilityMultiplier = 5;
-    private static int checkScore = 1000000000;
-
-
-    public static Move findBestMove(Board board, int depth) {
-        return rootNegamax(board, depth, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    /**
+     * Creates a new bot to play on a board based on a given FEN string
+     * @param fen A valid FEN string
+     */
+    public Bot(String fen) {
+        board = new Board(fen);
     }
 
-    private static Move rootNegamax(Board board, int depth, int alpha, int beta) {
+    /**
+     * Creates a new bot to play on a board
+     * @param board Board for the bot to play on
+     */
+    public Bot(Board board) {
+        this.board = board;
+    }
+
+    /**
+     * Finds the best possible move utilizing the Negated Minimax algorithm
+     * @param depth The depth to search to
+     * @return The best possible move
+     */
+    public Move findBestMove(int depth) {
+        return rootNegamax(depth, Integer.MIN_VALUE, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Recursively explores the game tree to evaluate the best possible move
+     * @param depth The depth to search to
+     * @param alpha The alpha value (alpha-beta pruning)
+     * @param beta The beta value (alpha-beta pruning)
+     * @return The highest evaluated position
+     */
+    private Move rootNegamax(int depth, int alpha, int beta) {
         if (depth == 0) return null;
 
         int max = Integer.MIN_VALUE;
         Move maxMove = null;
 
-        ArrayList<Move> moves = generateMoves(board);
+        ArrayList<Move> moves = generateMoves();
         for (Move m : moves) {
             board.makeMove(m);
-            int score = -negamax(board, depth - 1, -beta, -alpha);
+            int score = -negamax(depth - 1, -beta, -alpha);
             board.unmakeMove();
 
             if (score > max) {
@@ -40,20 +58,27 @@ public class Bot {
         return maxMove;
     }
 
-    private static int negamax(Board board, int depth, int alpha, int beta) {
-        if (depth == 0) return evaluateBoard(board);
+    /**
+     * Recursively explores the game tree to evaluate the best possible move's score
+     * @param depth The depth to search to
+     * @param alpha The alpha value (alpha-beta pruning)
+     * @param beta The beta value (alpha-beta pruning)
+     * @return The best position's evaluation
+     */
+    private int negamax(int depth, int alpha, int beta) {
+        if (depth == 0) return evaluateBoard();
 
         int max = Integer.MIN_VALUE;
 
-        ArrayList<Move> moves = generateMoves(board);
-        if (moves.size() == 0) {
-            if (inCheck(board, board.toMove)) return -checkScore;
+        ArrayList<Move> moves = generateMoves();
+        if (moves.isEmpty()) {
+            if (inCheck(board.toMove)) return -EvalConstants.checkScore;
             else return 0;
         }
 
         for (Move m : moves) {
             board.makeMove(m);
-            int score = -negamax(board, depth - 1, -beta, -alpha);
+            int score = -negamax(depth - 1, -beta, -alpha);
             board.unmakeMove();
 
             if (score > max) {
@@ -66,234 +91,305 @@ public class Bot {
         return max;
     }
 
-    public static int evaluateBoard(Board board) {
+    /**
+     * Evaluates a given board based on certain considerations.
+     * @return A value representing the board's evaluation. Positive represents white winning, negative represents black winning
+     */
+    public int evaluateBoard() {
         int eval = 0;
 
-        ArrayList<Move> whiteMoves = generateMovesColor(board, Piece.White);
-        ArrayList<Move> blackMoves = generateMovesColor(board, Piece.Black);
+        ArrayList<Move> whiteMoves = generateMovesColor(Piece.White);
+        ArrayList<Move> blackMoves = generateMovesColor(Piece.Black);
 
         // Material score - The number of pieces available
-        int kingDiff = kingScore * (board.pieceCounts.getOrDefault((Piece.King | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.King | Piece.Black), 0));
-        int queenDiff = queenScore * (board.pieceCounts.getOrDefault((Piece.Queen | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Queen | Piece.Black), 0));
-        int rookDiff = rookScore * (board.pieceCounts.getOrDefault((Piece.Rook | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Rook | Piece.Black), 0));
-        int bishopDiff = bishopScore * (board.pieceCounts.getOrDefault((Piece.Bishop | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Bishop | Piece.Black), 0));
-        int knightDiff = knightScore * (board.pieceCounts.getOrDefault((Piece.Knight | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Knight | Piece.Black), 0));
-        int pawnDiff = pawnScore * (board.pieceCounts.getOrDefault((Piece.Pawn | Piece.White), 0) - board.pieceCounts.getOrDefault((Piece.Pawn | Piece.Black), 0));
+        int kingDiff = EvalConstants.kingScore * (board.getCount(Piece.King | Piece.White) - board.getCount(Piece.King | Piece.Black));
+        int queenDiff = EvalConstants.queenScore * (board.getCount(Piece.Queen | Piece.White) - board.getCount(Piece.Queen | Piece.Black));
+        int rookDiff = EvalConstants.rookScore * (board.getCount(Piece.Rook | Piece.White) - board.getCount(Piece.Rook | Piece.Black));
+        int bishopDiff = EvalConstants.bishopScore * (board.getCount(Piece.Bishop | Piece.White) - board.getCount(Piece.Bishop | Piece.Black));
+        int knightDiff = EvalConstants.knightScore * (board.getCount(Piece.Knight | Piece.White) - board.getCount(Piece.Knight | Piece.Black));
+        int pawnDiff = EvalConstants.pawnScore * (board.getCount(Piece.Pawn | Piece.White) - board.getCount(Piece.Pawn | Piece.Black));
 
         int materialScore = kingDiff + queenDiff + rookDiff + bishopDiff + knightDiff + pawnDiff;
         eval += materialScore;
 
         // Mobility score - The number of moves available
-        int mobilityScore = (whiteMoves.size() - blackMoves.size()) * mobilityMultiplier;
+        int mobilityScore = (whiteMoves.size() - blackMoves.size()) * EvalConstants.mobilityMultiplier;
         eval += mobilityScore;
 
         // The negamax algorithm requires white and black moves to be of opposite signs
         int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
-
         return relativeMultiplier * eval;
     }
 
-    public static ArrayList<Move> generatePseudoMoves(Board board) {
-        int[] slideOffsets = {-1, 1, -8, 8, -9, -7, 7, 9}; // First half straight, second half diagonal
-        int[] knightOffsets = {-17, -15, 10, -6, -10, 6, 15, 17};
-        int[] kingOffsets = {-1, 1, -9, -8, -7, 7, 8, 9};
-        int[] pawnAttackOffsets = {9, 7};
-        ArrayList<Move> pseudoLegalMoves = new ArrayList<>();
-
-        int[] boardState = board.getState();
-        for (int i = 0; i < boardState.length; i++) {
-            int square = boardState[i];
-            if (square == 0 || !Piece.isColor(square, board.toMove)) continue;
-
-            if (Piece.isStraightSliding(square)) {
-                for (int j = 0; j < 4; j++) {
-                    int currentIndex = i;
-                    int offset = slideOffsets[j];
-                    int target = currentIndex + offset;
-                    boolean rankCheck = (Math.abs(offset) > 1 || currentIndex / 8 == target / 8);
-                    while (target >= 0 && target < 64 && rankCheck && boardState[target] == 0) {
-                        pseudoLegalMoves.add(new Move(i, target, square));
-                        currentIndex += offset;
-                        target = currentIndex + offset;
-                        rankCheck = (Math.abs(offset) > 1 || currentIndex / 8 == target / 8);
-                    }
-                    // Check for capture
-                    if (target >= 0 && target < 64 && rankCheck && !Piece.compareColor(square, boardState[target])) {
-                        pseudoLegalMoves.add(new Move(i, target, square, true, false, false));
-                    }
-                }
-            }
-            if (Piece.isDiagonalSliding(square)) {
-                for (int j = 4; j < 8; j++) {
-                    int currentIndex = i;
-                    int offset = slideOffsets[j];
-                    int target = currentIndex + offset;
-                    int moveDist = Board.getManhattanDistance(currentIndex, target);
-                    while (target >= 0 && target < 64 && moveDist <= 2 && boardState[target] == 0) {
-                        pseudoLegalMoves.add(new Move(i, target, square));
-                        currentIndex += offset;
-                        target = currentIndex + offset;
-                        moveDist = Board.getManhattanDistance(currentIndex, target);
-                    }
-
-                    if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(square, boardState[target])) {
-                        pseudoLegalMoves.add(new Move(i, target, square, true, false, false));
-                    }
-                }
-            }
-
-            if (Piece.isType(square, Piece.Knight)) {
-                for (int offset : knightOffsets) {
-                    int target = i + offset;
-                    int squareFile = i % 8;
-                    int targetFile = target % 8;
-                    if (target >= 0 && target <= 63 && Math.abs(squareFile - targetFile) <= 2) {
-                        if (boardState[target] == 0)
-                            pseudoLegalMoves.add(new Move(i, target, square));
-                        else if (!Piece.compareColor(square, boardState[target]))
-                            pseudoLegalMoves.add(new Move(i, target, square, true, false, false));
-                    }
-                }
-            }
-            else if (Piece.isType(square, Piece.King)) {
-                for (int offset : kingOffsets) {
-                    int target = i + offset;
-                    int squareFile = i % 8;
-                    int targetFile = target % 8;
-                    if (target >= 0 && target <= 63 && Math.abs(squareFile - targetFile) <= 1) {
-                        if (boardState[target] == 0)
-                            pseudoLegalMoves.add(new Move(i, target, square));
-                        else if (!Piece.compareColor(square, boardState[target]))
-                            pseudoLegalMoves.add(new Move(i, target, square, true, false, false));
-                    }
-                }
-                int kingColor = Piece.color(square);
-                int k = (kingColor == Piece.White) ? 60 : 4;
-                int rk = (kingColor == Piece.White) ? 63 : 7;
-                int k1 = (kingColor == Piece.White) ? 61 : 5;
-                int k2 = (kingColor == Piece.White) ? 62 : 6;
-                int rq = (kingColor == Piece.White) ? 56 : 0;
-                int q1 = (kingColor == Piece.White) ? 57 : 1;
-                int q2 = (kingColor == Piece.White) ? 58 : 2;
-                int q3 = (kingColor == Piece.White) ? 59 : 3;
-                boolean validKingside = (Piece.color(square) == Piece.Black && board.blackKingCastle && board.blackCastle) || (Piece.color(square) == Piece.White && board.whiteKingCastle && board.whiteCastle);
-                boolean validQueenside = (Piece.color(square) == Piece.Black && board.blackQueenCastle && board.blackCastle) || (Piece.color(square) == Piece.White && board.whiteQueenCastle && board.whiteCastle);
-                // Castle Kingside
-                if (validKingside && i == k && boardState[rk] == (Piece.Rook | kingColor) && boardState[k1] == 0 && boardState[k2] == 0) {
-                    pseudoLegalMoves.add(new Move(i, k2, square, false, true, false));
-                }
-                // Castle Queenside
-                if (validQueenside && i == k && boardState[rq] == (Piece.Rook | kingColor) && boardState[q1] == 0 && boardState[q2] == 0 && boardState[q3] == 0) {
-                    pseudoLegalMoves.add(new Move(i, q2, square, false, true, false));
-                }
-            }
-            else if (Piece.isType(square, Piece.Pawn)) {
-                int pawnColor = Piece.color(square);
-                int direction = (pawnColor == Piece.White) ? -1 : 1;
-                int target = i + direction * 8;
-                if (target >= 0 && target < 64 && boardState[target] == 0) { // Straight
-                    if (target / 8 == 0 || target / 8 == 7) { // Promotion
-                        pseudoLegalMoves.add(new Move(i, target, square, false, Piece.Queen | pawnColor));
-                        pseudoLegalMoves.add(new Move(i, target, square, false, Piece.Bishop | pawnColor));
-                        pseudoLegalMoves.add(new Move(i, target, square, false, Piece.Rook | pawnColor));
-                        pseudoLegalMoves.add(new Move(i, target, square, false, Piece.Knight | pawnColor));
-                    }
-                    else { // Normal
-                        pseudoLegalMoves.add(new Move(i, target, square));
-                    }
-                }
-
-                for (int offset : pawnAttackOffsets) { // Attack
-                    target = i + direction * offset;
-                    int squareFile = i % 8;
-                    int targetFile = target % 8;
-                    if (target < 0 || target > 63 || Math.abs(squareFile - targetFile) > 1) continue;
-                    if (!Piece.compareColor(boardState[target], square) && boardState[target] != 0) { // Valid attack
-                        if (target / 8 == 0 || target / 8 == 7) { // Promotion
-                            pseudoLegalMoves.add(new Move(i, target, square, true, Piece.Queen | pawnColor));
-                            pseudoLegalMoves.add(new Move(i, target, square, true, Piece.Bishop | pawnColor));
-                            pseudoLegalMoves.add(new Move(i, target, square, true, Piece.Rook | pawnColor));
-                            pseudoLegalMoves.add(new Move(i, target, square, true, Piece.Knight | pawnColor));
-                        }
-                        else { // Normal
-                            pseudoLegalMoves.add(new Move(i, target, square, true, false, false));
-                        }
-                    }
-                }
-
-                // Pawn first move
-                if (pawnColor == Piece.White && (i / 8 == 6) && boardState[i - 16] == 0 && boardState[i - 8] == 0) {
-                    pseudoLegalMoves.add(new Move(i, i - 16, square));
-                }
-                else if (pawnColor == Piece.Black && (i / 8 == 1) && boardState[i + 16] == 0 && boardState[i + 8] == 0) {
-                    pseudoLegalMoves.add(new Move(i, i + 16, square));
-                }
-
-                // En-passant
-                Move lastMove = board.lastMove;
-                boolean whiteValidPlacement = (lastMove.endIndex == i - 1 || lastMove.endIndex == i + 1) && (lastMove.startIndex == i - 17 || lastMove.startIndex == i - 15);
-                boolean blackValidPlacement = (lastMove.endIndex == i - 1 || lastMove.endIndex == i + 1) && (lastMove.startIndex == i + 17 || lastMove.startIndex == i + 15);
-                if (pawnColor == Piece.White && (i / 8) == 3 && lastMove.piece == (Piece.Pawn | Piece.Black) && whiteValidPlacement)
-                    pseudoLegalMoves.add(new Move(i, lastMove.endIndex - 8, square, true, false, true));
-                else if (pawnColor == Piece.Black && (i / 8) == 4 && lastMove.piece == (Piece.Pawn | Piece.White) && blackValidPlacement)
-                    pseudoLegalMoves.add(new Move(i, lastMove.endIndex + 8, square, true, false, true));
-            }
-        }
-
-        return pseudoLegalMoves;
+    /**
+     * Generates legal moves in the current board's state
+     * @return A list of legal moves
+     */
+    public ArrayList<Move> generateMoves() {
+        return checkLegality(generatePseudoMoves());
     }
-    public static ArrayList<Move> generateMoves(Board board) {
-        ArrayList<Move> legalMoves = checkLegality(board, generatePseudoMoves(board));
-        return legalMoves;
-    }
-    public static ArrayList<Move> generateMovesColor(Board board, int color) {
+
+    /**
+     * Generates legal moves for a certain color in the current board's state
+     * @param color The color to be examined
+     * @return A list of legal moves
+     */
+    public ArrayList<Move> generateMovesColor(int color) {
         int oldState = board.toMove;
         board.toMove = color;
-        ArrayList<Move> moves = generateMoves(board);
+        ArrayList<Move> moves = generateMoves();
         board.toMove = oldState;
         return moves;
     }
 
-    public static boolean inCheck(Board board, int color) {
-        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
-        Bitboard attackedSquares = getAttackedSquares(board, otherColor);
-        for (int i = 0; i < 64; i++) {
-            int square = board.getState()[i];
-            boolean isAttacked = attackedSquares.board[i];
-            if (square == (Piece.King | color) && isAttacked) return true;
+
+    /**
+     * Generate pseudo-legal moves in the current board's state
+     * @return A list of pseudo-legal moves
+     */
+    public ArrayList<Move> generatePseudoMoves() {
+        ArrayList<Move> pseudoLegalMoves = new ArrayList<>();
+
+        pseudoLegalMoves.addAll(generatePseudoKingMoves());
+        pseudoLegalMoves.addAll(generatePseudoQueenMoves());
+        pseudoLegalMoves.addAll(generatePseudoRookMoves());
+        pseudoLegalMoves.addAll(generatePseudoBishopMoves());
+        pseudoLegalMoves.addAll(generatePseudoKnightMoves());
+        pseudoLegalMoves.addAll(generatePseudoPawnMoves());
+
+        return pseudoLegalMoves;
+    }
+
+    public ArrayList<Move> generatePseudoMovesWithoutKing() {
+        ArrayList<Move> pseudoLegalMoves = new ArrayList<>();
+
+        pseudoLegalMoves.addAll(generatePseudoQueenMoves());
+        pseudoLegalMoves.addAll(generatePseudoRookMoves());
+        pseudoLegalMoves.addAll(generatePseudoBishopMoves());
+        pseudoLegalMoves.addAll(generatePseudoKnightMoves());
+        pseudoLegalMoves.addAll(generatePseudoPawnMoves());
+
+        return pseudoLegalMoves;
+    }
+
+    private ArrayList<Move> generatePseudoKingMoves() {
+        ArrayList<Integer> positions = board.getPos((Piece.King | board.toMove));
+        ArrayList<Move> moves = new ArrayList<>();
+        int piece = (Piece.King | board.toMove);
+        for (int pos : positions) {
+            for (int offset : EvalConstants.kingOffsets) { // Loop through the king's possible movements
+                int target = pos + offset;
+                int squareFile = pos % 8;
+                int targetFile = target % 8;
+                if (target >= 0 && target <= 63 && Math.abs(squareFile - targetFile) <= 1) {
+                    if (board.board[target] == 0)
+                        moves.add(new Move(pos, target, piece));
+                    else if (!Piece.compareColor(piece, board.board[target]))
+                        moves.add(new Move(pos, target, piece, true, false, false));
+                }
+            }
+
+            int kingColor = board.toMove;
+            // Positions for castling
+            int k = (kingColor == Piece.White) ? 60 : 4;
+            int rk = (kingColor == Piece.White) ? 63 : 7;
+            int k1 = (kingColor == Piece.White) ? 61 : 5;
+            int k2 = (kingColor == Piece.White) ? 62 : 6;
+            int rq = (kingColor == Piece.White) ? 56 : 0;
+            int q1 = (kingColor == Piece.White) ? 57 : 1;
+            int q2 = (kingColor == Piece.White) ? 58 : 2;
+            int q3 = (kingColor == Piece.White) ? 59 : 3;
+            boolean validKingside = (Piece.color(piece) == Piece.Black && board.blackKingCastle && board.blackCastle) || (Piece.color(piece) == Piece.White && board.whiteKingCastle && board.whiteCastle);
+            boolean validQueenside = (Piece.color(piece) == Piece.Black && board.blackQueenCastle && board.blackCastle) || (Piece.color(piece) == Piece.White && board.whiteQueenCastle && board.whiteCastle);
+            boolean inCheck = inCheck(board.toMove);
+            // Castle Kingside
+            if (!inCheck && validKingside && pos == k && board.board[rk] == (Piece.Rook | kingColor) && board.board[k1] == 0 && board.board[k2] == 0) {
+                moves.add(new Move(pos, k2, piece, false, true, false));
+            }
+            // Castle Queenside
+            if (!inCheck && validQueenside && pos == k && board.board[rq] == (Piece.Rook | kingColor) && board.board[q1] == 0 && board.board[q2] == 0 && board.board[q3] == 0) {
+                moves.add(new Move(pos, q2, piece, false, true, false));
+            }
         }
-        return false;
+
+        return moves;
     }
 
-    public static boolean inCheckmate(Board board, int color) {
-        if (generateMovesColor(board, color).size() != 0) return false;
-        return inCheck(board, color);
-    }
+    private ArrayList<Move> generatePseudoQueenMoves() {
+        ArrayList<Integer> positions = board.getPos((Piece.Queen | board.toMove));
+        ArrayList<Move> moves = new ArrayList<>();
+        int piece = (Piece.Queen | board.toMove);
+        for (int pos : positions) {
+            for (int offset : EvalConstants.queenOffsets) {
+                int currentIndex = pos;
+                int target = currentIndex + offset;
+                int moveDist = Board.getManhattanDistance(currentIndex, target);
 
-    public static Bitboard getAttackedSquares(Board board, int color) {
-        Bitboard squaresBoard = new Bitboard();
+                while (target >= 0 && target < 64 && moveDist <= 2 && board.board[target] == 0) {
+                    moves.add(new Move(pos, target, piece));
+                    currentIndex += offset;
+                    target = currentIndex + offset;
+                    moveDist = Board.getManhattanDistance(currentIndex, target);
+                }
 
-        int oldState = board.toMove;
-        board.toMove = color;
-        ArrayList<Move> moves = generateMoves(board);
-        board.toMove = oldState;
-
-        for (Move m : moves) {
-            squaresBoard.board[m.endIndex] = true;
+                if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(piece, board.board[target])) {
+                    moves.add(new Move(pos, target, piece, true, false, false));
+                }
+            }
         }
 
-        return squaresBoard;
+        return moves;
     }
 
-    private static ArrayList<Move> checkLegality(Board board, ArrayList<Move> moves) {
+    private ArrayList<Move> generatePseudoRookMoves() {
+        ArrayList<Integer> positions = board.getPos((Piece.Rook | board.toMove));
+        ArrayList<Move> moves = new ArrayList<>();
+        int piece = (Piece.Rook | board.toMove);
+        for (int pos : positions) {
+            for (int offset : EvalConstants.rookOffsets) {
+                int currentIndex = pos;
+                int target = currentIndex + offset;
+                int moveDist = Board.getManhattanDistance(currentIndex, target);
+
+                while (target >= 0 && target < 64 && moveDist <= 2 && board.board[target] == 0) {
+                    moves.add(new Move(pos, target, piece));
+                    currentIndex += offset;
+                    target = currentIndex + offset;
+                    moveDist = Board.getManhattanDistance(currentIndex, target);
+                }
+
+                if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(piece, board.board[target])) {
+                    moves.add(new Move(pos, target, piece, true, false, false));
+                }
+            }
+        }
+
+        return moves;
+    }
+
+    private ArrayList<Move> generatePseudoBishopMoves() {
+        ArrayList<Integer> positions = board.getPos((Piece.Bishop | board.toMove));
+        ArrayList<Move> moves = new ArrayList<>();
+        int piece = (Piece.Bishop | board.toMove);
+        for (int pos : positions) {
+            for (int offset : EvalConstants.bishopOffsets) {
+                int currentIndex = pos;
+                int target = currentIndex + offset;
+                int moveDist = Board.getManhattanDistance(currentIndex, target);
+
+                while (target >= 0 && target < 64 && moveDist <= 2 && board.board[target] == 0) {
+                    moves.add(new Move(pos, target, piece));
+                    currentIndex += offset;
+                    target = currentIndex + offset;
+                    moveDist = Board.getManhattanDistance(currentIndex, target);
+                }
+
+                if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(piece, board.board[target])) {
+                    moves.add(new Move(pos, target, piece, true, false, false));
+                }
+            }
+        }
+
+        return moves;
+    }
+
+    private ArrayList<Move> generatePseudoKnightMoves() {
+        ArrayList<Integer> positions = board.getPos((Piece.Knight | board.toMove));
+        ArrayList<Move> moves = new ArrayList<>();
+        int piece = (Piece.Knight | board.toMove);
+        for (int pos : positions) {
+            for (int offset : EvalConstants.knightOffsets) {
+                int target = pos + offset;
+                int squareFile = pos % 8;
+                int targetFile = target % 8;
+                if (target >= 0 && target <= 63 && Math.abs(squareFile - targetFile) <= 2) {
+                    if (board.board[target] == 0)
+                        moves.add(new Move(pos, target, piece));
+                    else if (!Piece.compareColor(piece, board.board[target]))
+                        moves.add(new Move(pos, target, piece, true, false, false));
+                }
+            }
+        }
+
+        return moves;
+    }
+
+    private ArrayList<Move> generatePseudoPawnMoves() {
+        ArrayList<Integer> positions = board.getPos((Piece.Pawn | board.toMove));
+        ArrayList<Move> moves = new ArrayList<>();
+        int piece = (Piece.Pawn | board.toMove);
+
+        for (int pos : positions) {
+            int direction = (board.toMove == Piece.White) ? -1 : 1;
+            int target = pos + direction * 8;
+            if (target >= 0 && target < 64 && board.board[target] == 0) { // Straight
+                if (target / 8 == 0 || target / 8 == 7) { // Promotion
+                    moves.add(new Move(pos, target, piece, false, Piece.Queen | board.toMove));
+                    moves.add(new Move(pos, target, piece, false, Piece.Bishop | board.toMove));
+                    moves.add(new Move(pos, target, piece, false, Piece.Rook | board.toMove));
+                    moves.add(new Move(pos, target, piece, false, Piece.Knight | board.toMove));
+                }
+                else { // Normal
+                    moves.add(new Move(pos, target, piece));
+                }
+            }
+
+            for (int offset : EvalConstants.pawnAttackOffsets) { // Attack
+                target = pos + direction * offset;
+                int squareFile = pos % 8;
+                int targetFile = target % 8;
+                if (target < 0 || target > 63 || Math.abs(squareFile - targetFile) > 1) continue;
+                if (!Piece.compareColor(board.board[target], piece) && board.board[target] != 0) { // Valid attack
+                    if (target / 8 == 0 || target / 8 == 7) { // Promotion
+                        moves.add(new Move(pos, target, piece, true, Piece.Queen | board.toMove));
+                        moves.add(new Move(pos, target, piece, true, Piece.Bishop | board.toMove));
+                        moves.add(new Move(pos, target, piece, true, Piece.Rook | board.toMove));
+                        moves.add(new Move(pos, target, piece, true, Piece.Knight | board.toMove));
+                    }
+                    else { // Normal
+                        moves.add(new Move(pos, target, piece, true, false, false));
+                    }
+                }
+            }
+
+            // Pawn first move
+            if (board.toMove == Piece.White && (pos / 8 == 6) && board.board[pos - 16] == 0 && board.board[pos - 8] == 0) {
+                moves.add(new Move(pos, pos - 16, piece));
+            }
+            else if (board.toMove == Piece.Black && (pos / 8 == 1) && board.board[pos + 16] == 0 && board.board[pos + 8] == 0) {
+                moves.add(new Move(pos, pos + 16, piece));
+            }
+
+            // En-passant
+            Move lastMove = board.lastMove;
+            if (lastMove != null) {
+                boolean whiteValidPlacement = (lastMove.endIndex == pos - 1 || lastMove.endIndex == pos + 1) && (lastMove.startIndex == pos - 17 || lastMove.startIndex == pos - 15);
+                boolean blackValidPlacement = (lastMove.endIndex == pos - 1 || lastMove.endIndex == pos + 1) && (lastMove.startIndex == pos + 17 || lastMove.startIndex == pos + 15);
+                if (board.toMove == Piece.White && (pos / 8) == 3 && lastMove.piece == (Piece.Pawn | Piece.Black) && whiteValidPlacement)
+                    moves.add(new Move(pos, lastMove.endIndex - 8, piece, true, false, true));
+                else if (board.toMove == Piece.Black && (pos / 8) == 4 && lastMove.piece == (Piece.Pawn | Piece.White) && blackValidPlacement)
+                    moves.add(new Move(pos, lastMove.endIndex + 8, piece, true, false, true));
+            }
+        }
+
+        return moves;
+    }
+
+
+    /**
+     * Calculates the legality of a list of pseudo-legal moves
+     * @param moves A list of pseudo-legal moves
+     * @return A subset of moves that are legal
+     */
+    private ArrayList<Move> checkLegality(ArrayList<Move> moves) {
         ArrayList<Move> legalMoves = new ArrayList<>();
 
         for (Move m : moves) {
             board.makeMove(m); // Make the move we're testing
-            boolean legal = true;
-            // If that move allows the opponent to capture the king on the next turn, it is illegal
-            for (Move opponentMove : generatePseudoMoves(board)) {
-                if (Piece.type(board.board[opponentMove.endIndex]) == Piece.King) {
+            boolean legal = true; // Assume the move is legal
+            // If the move we made allows the opponent to capture our king next turn, it is illegal
+            for (Move counterMove : generatePseudoMoves()) {
+                if (Piece.type(board.board[counterMove.endIndex]) == Piece.King) {
                     legal = false;
                     break;
                 }
@@ -305,29 +401,105 @@ public class Bot {
         return legalMoves;
     }
 
-    public static Move validateMove(Board board, int startIndex, int endIndex) {
-        for (Move m : generateMoves(board)) {
-            if (m.startIndex == startIndex && m.endIndex == endIndex)
-                return m;
+    /**
+     * Calculates the squares attacked by a certain side
+     * @param color The side to analyze
+     * @return A bitboard containing the squares under attack
+     */
+    public Bitboard getAttackedSquares(int color) {
+        Bitboard squaresBoard = new Bitboard();
+
+        int oldState = board.toMove;
+        board.toMove = color;
+        ArrayList<Move> moves = generateMoves();
+        board.toMove = oldState;
+
+        for (Move m : moves) {
+            squaresBoard.board[m.endIndex] = true;
+        }
+
+        return squaresBoard;
+    }
+
+    public Bitboard getAttackedSquaresWithoutKing(int color) {
+        Bitboard squaresBoard = new Bitboard();
+
+        int oldState = board.toMove;
+        board.toMove = color;
+        ArrayList<Move> moves = generatePseudoMovesWithoutKing();
+        board.toMove = oldState;
+
+        for (Move m : moves) {
+            squaresBoard.board[m.endIndex] = true;
+        }
+
+        return squaresBoard;
+    }
+
+    /**
+     * Calculates whether a given side is currently in check
+     * @param color The side of interest
+     * @return The side of interest's check status
+     */
+    public boolean inCheck(int color) {
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+        Bitboard attackedSquares = getAttackedSquaresWithoutKing(otherColor);
+        int targetedKingPos = board.getPos((Piece.King | color)).get(0);
+        return attackedSquares.board[targetedKingPos] == true;
+    }
+
+    /**
+     * Calculates whether a given side is currently in checkmate
+     * @param color The side of interest
+     * @return The side of interest's checkmate status
+     */
+    public boolean inCheckmate(int color) {
+        if (!generateMovesColor(color).isEmpty()) return false;
+        return inCheck(color);
+    }
+
+    /**
+     * Validates the legality of a move, given its start and end indices only
+     * @param startIndex Start index
+     * @param endIndex End index
+     * @return The legal move (or null if illegal), with additional info about the piece and its actions (capture, castle, passant, etc.)
+     */
+    public Move validateMove(int startIndex, int endIndex) {
+        for (Move m : generateMoves()) {
+            if (m.startIndex == startIndex && m.endIndex == endIndex) return m;
         }
         return null;
     }
 
-    public static int perft(Board board, int depth) {
+    public Board getBoard() { return board; }
+
+    /**
+     * Runs a performance test on the current board to calculate the number of legal board positions
+     * @param depth The depth to search to
+     * @return The number of legal board positions up to the given depth
+     */
+    public int perft(int depth) {
         if (depth == 0) return 1;
 
-        ArrayList<Move> moves = generateMoves(board);
+        ArrayList<Move> moves = generateMoves();
         int totalMoves = 0;
-        for (Move move : moves) {
-            board.makeMove(move);
-            totalMoves += perft(board, depth - 1);
+        for (Move m : moves) {
+            board.makeMove(m);
+            totalMoves += perft(depth - 1);
             board.unmakeMove();
         }
 
         return totalMoves;
     }
-    public static int perftCaptures(Board board, int depth) {
-        ArrayList<Move> moves = generateMoves(board);
+
+    /**
+     * Runs a performance test on the current board to calculate the number of captures
+     * @param depth The depth to search to
+     * @return The number of captures up to the given depth
+     */
+    public int perftCaptures(int depth) {
+        if (depth == 0) return 0;
+        ArrayList<Move> moves = generateMoves();
         int captureCount = 0;
         if (depth == 1) {
             for (Move m : moves) {
@@ -339,7 +511,7 @@ public class Bot {
         int totalCaptures = 0;
         for (Move m : moves) {
             board.makeMove(m);
-            totalCaptures += perftCaptures(board, depth - 1);
+            totalCaptures += perftCaptures(depth - 1);
             board.unmakeMove();
         }
         return totalCaptures;

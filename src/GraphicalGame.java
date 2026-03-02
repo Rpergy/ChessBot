@@ -8,7 +8,7 @@ class GraphicalGame {
     public static Color selectedOddTileColor = new Color(199, 187, 145);
     public static Color attackColor = new Color(189, 222, 135);
 
-    static int tileSize = 70;
+    static int tileSize = 100;
     static int windowResolution = 800;
 
     public static JButton[] tiles = new JButton[64];
@@ -18,10 +18,9 @@ class GraphicalGame {
     public static void main(String[] args) {
         JFrame frame = new JFrame();
 
-        Board board = new Board();
-        board.loadFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        Bot bot = new Bot("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-        ButtonListener bl = new ButtonListener(board);
+        ButtonListener bl = new ButtonListener(bot);
 
         for (int rank = 0; rank < 8; rank++) {
             for (int file = 0; file < 8; file++) {
@@ -34,12 +33,10 @@ class GraphicalGame {
                 else
                     button.setBackground(oddTileColor);
 
-                int boardOffset = 10;
-
-                if (board.board[boardIndex] == 0)
+                if (bot.getBoard().board[boardIndex] == 0)
                     button.setText(" ");
                 else
-                    button.setText(Board.getPieceCharMap().get(board.board[boardIndex]) + "");
+                    button.setText(Board.getPieceCharMap().get(bot.getBoard().board[boardIndex]) + "");
 
                 Font font = new Font("MS Gothic", Font.BOLD, 35);
                 button.setFont(font);
@@ -52,7 +49,7 @@ class GraphicalGame {
 
                 button.addActionListener(bl);
 
-                button.setBounds(boardOffset + tileSize * file, boardOffset + tileSize * rank, tileSize, tileSize);
+                button.setBounds(tileSize * file, tileSize * rank, tileSize, tileSize);
                 frame.add(button);
 
                 tiles[boardIndex] = button;

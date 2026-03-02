@@ -9,10 +9,10 @@ public class ButtonListener implements ActionListener {
     static int lastSelectedIndex = -1;
     static ArrayList<Move> lastMoves = new ArrayList<>();
 
-    Board board;
+    Bot bot;
 
-    public ButtonListener(Board board) {
-        this.board = board;
+    public ButtonListener(Bot bot) {
+        this.bot = bot;
     }
 
     @Override
@@ -38,7 +38,7 @@ public class ButtonListener implements ActionListener {
         }
 
         // If the selected tile is valid (not the last selected tile, not an empty tile, not an opponents tile)
-        if ((lastSelected != sourceButton && board.board[sourceIndex] != 0 && Piece.color(board.board[sourceIndex]) == board.toMove)) {
+        if ((lastSelected != sourceButton && bot.getBoard().board[sourceIndex] != 0 && Piece.color(bot.getBoard().board[sourceIndex]) == bot.getBoard().toMove)) {
             // Undo the coloring from the last selected tile
             if (lastSelected != null) {
                 if (((lastSelectedIndex % 8) + (lastSelectedIndex / 8)) % 2 == 0) lastSelected.setBackground(GraphicalGame.evenTileColor);
@@ -46,8 +46,8 @@ public class ButtonListener implements ActionListener {
             }
             for (Move m : lastMoves) {
                 GraphicalGame.tiles[m.endIndex].setForeground(Color.BLACK);
-                if (board.board[m.endIndex] != 0)
-                    GraphicalGame.tiles[m.endIndex].setText(Board.getPieceCharMap().get(board.board[m.endIndex]) + "");
+                if (bot.getBoard().board[m.endIndex] != 0)
+                    GraphicalGame.tiles[m.endIndex].setText(Board.getPieceCharMap().get(bot.getBoard().board[m.endIndex]) + "");
                 else
                     GraphicalGame.tiles[m.endIndex].setText("");
             }
@@ -59,18 +59,18 @@ public class ButtonListener implements ActionListener {
                 sourceButton.setBackground(GraphicalGame.selectedOddTileColor);
 
             // Color the squares that have valid moves
-            ArrayList<Move> moves = Bot.generateMoves(board);
+            ArrayList<Move> moves = bot.generateMoves();
 
-            if (moves.size() == 0) GraphicalGame.moveStatus.setText("Black's Checkmate!");
+            if (moves.isEmpty()) GraphicalGame.moveStatus.setText("Black's Checkmate!");
 
             for (Move m : moves) {
                 if (m.startIndex == sourceIndex) {
-                    if (board.board[m.endIndex] == 0) GraphicalGame.tiles[m.endIndex].setText("•");
+                    if (bot.getBoard().board[m.endIndex] == 0) GraphicalGame.tiles[m.endIndex].setText("•");
                     GraphicalGame.tiles[m.endIndex].setForeground(GraphicalGame.attackColor);
                 }
             }
 
-            GraphicalGame.evaluation.setText("Evaluation: " + Bot.evaluateBoard(board));
+            GraphicalGame.evaluation.setText("Evaluation: " + bot.evaluateBoard());
 
             // Update the last selections
             lastSelected = sourceButton;
@@ -83,8 +83,8 @@ public class ButtonListener implements ActionListener {
                 else lastSelected.setBackground(GraphicalGame.oddTileColor);
                 for (Move m : lastMoves) {
                     GraphicalGame.tiles[m.endIndex].setForeground(Color.BLACK);
-                    if (board.board[m.endIndex] != 0)
-                        GraphicalGame.tiles[m.endIndex].setText(Board.getPieceCharMap().get(board.board[m.endIndex]) + "");
+                    if (bot.getBoard().board[m.endIndex] != 0)
+                        GraphicalGame.tiles[m.endIndex].setText(Board.getPieceCharMap().get(bot.getBoard().board[m.endIndex]) + "");
                     else
                         GraphicalGame.tiles[m.endIndex].setText("");
                 }
@@ -98,22 +98,22 @@ public class ButtonListener implements ActionListener {
                 }
                 for (Move m : lastMoves) {
                     GraphicalGame.tiles[m.endIndex].setForeground(Color.BLACK);
-                    if (board.board[m.endIndex] != 0)
-                        GraphicalGame.tiles[m.endIndex].setText(Board.getPieceCharMap().get(board.board[m.endIndex]) + "");
+                    if (bot.getBoard().board[m.endIndex] != 0)
+                        GraphicalGame.tiles[m.endIndex].setText(Board.getPieceCharMap().get(bot.getBoard().board[m.endIndex]) + "");
                     else
                         GraphicalGame.tiles[m.endIndex].setText("");
                 }
 
                 // Make the move
-                board.makeMove(Bot.validateMove(board, lastSelectedIndex, sourceIndex));
-                GraphicalGame.displayBoard(board);
+                bot.getBoard().makeMove(bot.validateMove(lastSelectedIndex, sourceIndex));
+                GraphicalGame.displayBoard(bot.getBoard());
 
                 // Perform the bot's move
-                Move move = Bot.findBestMove(board, 3);
+                Move move = bot.findBestMove(3);
                 if (move == null) GraphicalGame.moveStatus.setText("White's checkmate!");
                 else {
-                    board.makeMove(move);
-                    GraphicalGame.displayBoard(board);
+                    bot.getBoard().makeMove(move);
+                    GraphicalGame.displayBoard(bot.getBoard());
                 }
             }
 
