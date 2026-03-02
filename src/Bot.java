@@ -291,7 +291,6 @@ public class Bot {
         for (Move m : moves) {
             board.makeMove(m); // Make the move we're testing
             boolean legal = true;
-            int targetedKing = Piece.King | board.toMove;
             // If that move allows the opponent to capture the king on the next turn, it is illegal
             for (Move opponentMove : generatePseudoMoves(board)) {
                 if (Piece.type(board.board[opponentMove.endIndex]) == Piece.King) {

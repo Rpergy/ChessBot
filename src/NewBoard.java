@@ -53,7 +53,7 @@ public class NewBoard {
         blackCastle = b.blackCastle;
         whiteCastle = b.whiteCastle;
 
-        piecePositions = new HashMap<>(b.piecePositions);
+        piecePositions = NewBoard.copyPiecePositionMap(b.piecePositions);
     }
 
     /**
@@ -107,8 +107,7 @@ public class NewBoard {
 
         // Update position table
         getPos(move.piece).remove((Integer)move.startIndex);
-        piecePositions.get(move.piece).add(move.endIndex);
-        System.out.println(piecePositions.get(move.piece));
+        getPos(move.piece).add(move.endIndex);
 
         // If a piece is captured, we remove their position from the table
         if (move.isCapture) {
@@ -116,7 +115,7 @@ public class NewBoard {
             getPos(capturedPiece).remove((Integer)move.endIndex);
         }
 
-        if (move.promotion != -1) {
+        if (move.promotion != 0) {
             getPos(move.piece).remove((Integer)move.endIndex);
             getPos(move.promotion).add(move.endIndex);
         }
@@ -157,6 +156,7 @@ public class NewBoard {
                 board[3] = Piece.Rook | Piece.Black;
             }
         }
+
         if (move.promotion != 0)
             board[move.endIndex] = move.promotion;
         else
@@ -176,7 +176,8 @@ public class NewBoard {
     public void unmakeMove() {
         board = Arrays.copyOf(previousState.board, previousState.board.length);
         toMove = previousState.toMove;
-        lastMove = new Move(previousState.lastMove);
+        if (previousState.lastMove != null) lastMove = new Move(previousState.lastMove);
+        else lastMove = null;
 
         blackKingCastle = previousState.blackKingCastle;
         blackQueenCastle = previousState.blackQueenCastle;
@@ -185,7 +186,7 @@ public class NewBoard {
         whiteCastle = previousState.whiteCastle;
         blackCastle = previousState.blackCastle;
 
-        piecePositions = new HashMap<>(previousState.piecePositions);
+        piecePositions = NewBoard.copyPiecePositionMap(previousState.piecePositions);
 
         previousState = new NewBoard(previousState.previousState);
     }
@@ -207,7 +208,12 @@ public class NewBoard {
      * @return The position indices of the type of piece
      */
     public ArrayList<Integer> getPos(int piece) {
-        return piecePositions.getOrDefault(piece, new ArrayList<>());
+        if (piecePositions.containsKey(piece)) return piecePositions.get(piece);
+        else {
+            ArrayList<Integer> pos = new ArrayList<>();
+            piecePositions.put(piece, pos);
+            return pos;
+        }
     }
 
 
@@ -262,6 +268,14 @@ public class NewBoard {
         return inverse;
     }
 
+    private static HashMap<Integer, ArrayList<Integer>> copyPiecePositionMap(HashMap<Integer, ArrayList<Integer>> original) {
+        HashMap<Integer, ArrayList<Integer>> copy = new HashMap<>();
+
+        for (HashMap.Entry<Integer, ArrayList<Integer>> entry : original.entrySet()) {
+            copy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+        return copy;
+    }
 
     /**
      * Prints the board in the console

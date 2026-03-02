@@ -19,6 +19,10 @@ public class NewBot {
         this.board = board;
     }
 
+    /**
+     * Generate pseudo-legal moves in the current board's state
+     * @return A list of pseudo-legal moves
+     */
     public ArrayList<Move> generatePseudoMoves() {
         ArrayList<Move> pseudoLegalMoves = new ArrayList<>();
 
@@ -32,7 +36,29 @@ public class NewBot {
         return pseudoLegalMoves;
     }
 
-    public ArrayList<Move> generatePseudoKingMoves() {
+    /**
+     * Generates legal moves in the current board's state
+     * @return A list of legal moves
+     */
+    public ArrayList<Move> generateMoves() {
+        return checkLegality(generatePseudoMoves());
+    }
+
+    /**
+     * Generates legal moves for a certain color in the current board's state
+     * @param color The color to be examined
+     * @return A list of legal moves
+     */
+    public ArrayList<Move> generateMovesColor(int color) {
+        int oldState = board.toMove;
+        board.toMove = color;
+        ArrayList<Move> moves = generateMoves();
+        board.toMove = oldState;
+        return moves;
+    }
+
+
+    private ArrayList<Move> generatePseudoKingMoves() {
         ArrayList<Integer> positions = board.getPos((Piece.King | board.toMove));
         ArrayList<Move> moves = new ArrayList<>();
         int piece = (Piece.King | board.toMove);
@@ -74,7 +100,7 @@ public class NewBot {
         return moves;
     }
 
-    public ArrayList<Move> generatePseudoQueenMoves() {
+    private ArrayList<Move> generatePseudoQueenMoves() {
         ArrayList<Integer> positions = board.getPos((Piece.Queen | board.toMove));
         ArrayList<Move> moves = new ArrayList<>();
         int piece = (Piece.Queen | board.toMove);
@@ -100,7 +126,7 @@ public class NewBot {
         return moves;
     }
 
-    public ArrayList<Move> generatePseudoRookMoves() {
+    private ArrayList<Move> generatePseudoRookMoves() {
         ArrayList<Integer> positions = board.getPos((Piece.Rook | board.toMove));
         ArrayList<Move> moves = new ArrayList<>();
         int piece = (Piece.Rook | board.toMove);
@@ -126,7 +152,7 @@ public class NewBot {
         return moves;
     }
 
-    public ArrayList<Move> generatePseudoBishopMoves() {
+    private ArrayList<Move> generatePseudoBishopMoves() {
         ArrayList<Integer> positions = board.getPos((Piece.Bishop | board.toMove));
         ArrayList<Move> moves = new ArrayList<>();
         int piece = (Piece.Bishop | board.toMove);
@@ -152,7 +178,7 @@ public class NewBot {
         return moves;
     }
 
-    public ArrayList<Move> generatePseudoKnightMoves() {
+    private ArrayList<Move> generatePseudoKnightMoves() {
         ArrayList<Integer> positions = board.getPos((Piece.Knight | board.toMove));
         ArrayList<Move> moves = new ArrayList<>();
         int piece = (Piece.Knight | board.toMove);
@@ -173,7 +199,7 @@ public class NewBot {
         return moves;
     }
 
-    public ArrayList<Move> generatePseudoPawnMoves() {
+    private ArrayList<Move> generatePseudoPawnMoves() {
         ArrayList<Integer> positions = board.getPos((Piece.Pawn | board.toMove));
         ArrayList<Move> moves = new ArrayList<>();
         int piece = (Piece.Pawn | board.toMove);
@@ -234,6 +260,90 @@ public class NewBot {
         return moves;
     }
 
+    /**
+     * Calculates the legality of a list of pseudo-legal moves
+     * @param moves A list of pseudo-legal moves
+     * @return A subset of moves that are legal
+     */
+    private ArrayList<Move> checkLegality(ArrayList<Move> moves) {
+        ArrayList<Move> legalMoves = new ArrayList<>();
+
+        for (Move m : moves) {
+            board.makeMove(m); // Make the move we're testing
+            boolean legal = true; // Assume the move is legal
+            // If the move we made allows the opponent to capture our king next turn, it is illegal
+            for (Move counterMove : generatePseudoMoves()) {
+                if (Piece.type(board.board[counterMove.endIndex]) == Piece.King) {
+                    legal = false;
+                    break;
+                }
+            }
+            board.unmakeMove();
+            if (legal) legalMoves.add(m);
+        }
+
+        return legalMoves;
+    }
+
+    /**
+     * Calculates the squares attacked by a certain side
+     * @param color The side to analyze
+     * @return A bitboard containing the squares under attack
+     */
+    public Bitboard getAttackedSquares(int color) {
+        Bitboard squaresBoard = new Bitboard();
+
+        int oldState = board.toMove;
+        board.toMove = color;
+        ArrayList<Move> moves = generateMoves();
+        board.toMove = oldState;
+
+        for (Move m : moves) {
+            squaresBoard.board[m.endIndex] = true;
+        }
+
+        return squaresBoard;
+    }
+
+    /**
+     * Calculates whether a given side is currently in check
+     * @param color The side of interest
+     * @return The side of interest's check status
+     */
+    public boolean inCheck(int color) {
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+        Bitboard attackedSquares = getAttackedSquares(otherColor);
+        int targetedKingPos = board.getPos((Piece.King | color)).get(0);
+        return attackedSquares.board[targetedKingPos] == true;
+    }
+
+    /**
+     * Calculates whether a given side is currently in checkmate
+     * @param color The side of interest
+     * @return The side of interest's checkmate status
+     */
+    public boolean inCheckmate(int color) {
+        if (!generateMovesColor(color).isEmpty()) return false;
+        return inCheck(color);
+    }
+
+    /**
+     * Validates the legality of a move, given its start and end indices only
+     * @param startIndex Start index
+     * @param endIndex End index
+     * @return The legal move (or null if illegal), with additional info about the piece and its actions (capture, castle, passant, etc.)
+     */
+    public Move validateMove(int startIndex, int endIndex) {
+        for (Move m : generateMoves()) {
+            if (m.startIndex == startIndex && m.endIndex == endIndex) return m;
+        }
+        return null;
+    }
+
+    /**
+     * Evaluates a given board based on certain considerations.
+     * @return A value representing the board's evaluation. Positive represents white winning, negative represents black winning
+     */
     public int evaluateBoard() {
         int eval = 0;
 
@@ -261,4 +371,43 @@ public class NewBot {
     }
 
     public NewBoard getBoard() { return board; }
+
+    /**
+     * Runs a performance test on the current board to calculate the number of legal board positions
+     * @param depth The depth to search to
+     * @return The number of legal board positions up to the given depth
+     */
+    public int perft(int depth) {
+        if (depth == 0) return 1;
+
+        ArrayList<Move> moves = generateMoves();
+        int totalMoves = 0;
+        for (Move m : moves) {
+            board.makeMove(m);
+            totalMoves += perft(depth - 1);
+            board.unmakeMove();
+        }
+
+        return totalMoves;
+    }
+
+    public int perftCaptures(int depth) {
+        if (depth == 0) return 0;
+        ArrayList<Move> moves = generateMoves();
+        int captureCount = 0;
+        if (depth == 1) {
+            for (Move m : moves) {
+                if (m.isPassant) captureCount++;
+            }
+            return captureCount;
+        }
+
+        int totalCaptures = 0;
+        for (Move m : moves) {
+            board.makeMove(m);
+            totalCaptures += perftCaptures(depth - 1);
+            board.unmakeMove();
+        }
+        return totalCaptures;
+    }
 }

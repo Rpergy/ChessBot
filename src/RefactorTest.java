@@ -1,9 +1,11 @@
+// Starting position: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w
 public class RefactorTest {
     public static void main(String[] args) {
-        NewBot bot = new NewBot("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w");
+        NewBot bot = new NewBot("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
 
-        bot.getBoard().makeMove(new Move(50, 42, (Piece.Pawn | Piece.White)));
-
-        bot.getBoard().printPieceMap();
+        for (int i = 0; i <= 3; i++) {
+            System.out.println("Depth " + i + ": " + bot.perft(i));
+            System.out.println(bot.perftCaptures(i) + " en passant");
+        }
     }
 }
