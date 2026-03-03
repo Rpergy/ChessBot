@@ -56,15 +56,15 @@ class GraphicalGame {
         }
 
         moveStatus = new JLabel("");
-        moveStatus.setBounds(580, 0, 150, 50);
+        moveStatus.setBounds(595, 730, 150, 25);
 
         evaluation = new JLabel("Evaluation: 0");
-        evaluation.setBounds(0, 780, 150, 50);
+        evaluation.setBounds(10, 730, 150, 25);
 
         frame.add(moveStatus);
         frame.add(evaluation);
 
-        frame.setSize(735, 790);
+        frame.setSize(735, 800);
 
         frame.setLayout(null);
         frame.setVisible(true);
