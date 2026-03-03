@@ -8,8 +8,7 @@ class GraphicalGame {
     public static Color selectedOddTileColor = new Color(199, 187, 145);
     public static Color attackColor = new Color(189, 222, 135);
 
-    static int tileSize = 100;
-    static int windowResolution = 800;
+    static int tileSize = 90;
 
     public static JButton[] tiles = new JButton[64];
 
@@ -38,7 +37,7 @@ class GraphicalGame {
                 else
                     button.setText(Board.getPieceCharMap().get(bot.getBoard().board[boardIndex]) + "");
 
-                Font font = new Font("MS Gothic", Font.BOLD, 35);
+                Font font = new Font("MS Gothic", Font.BOLD, 45);
                 button.setFont(font);
 
                 button.setBorderPainted(false);
@@ -60,12 +59,12 @@ class GraphicalGame {
         moveStatus.setBounds(580, 0, 150, 50);
 
         evaluation = new JLabel("Evaluation: 0");
-        evaluation.setBounds(580, 30, 150, 50);
+        evaluation.setBounds(0, 780, 150, 50);
 
         frame.add(moveStatus);
         frame.add(evaluation);
 
-        frame.setSize(windowResolution, windowResolution);
+        frame.setSize(735, 790);
 
         frame.setLayout(null);
         frame.setVisible(true);
