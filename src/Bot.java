@@ -116,6 +116,24 @@ public class Bot {
         int mobilityScore = (whiteMoves.size() - blackMoves.size()) * EvalConstants.mobilityMultiplier;
         eval += mobilityScore;
 
+        // Piece-Square Table - Providing bonuses for pieces to be on certain squares
+        int pstScore = 0;
+        for (int pos : board.getPos(Piece.Pawn | Piece.White)) pstScore += EvalConstants.pawnTable[pos];
+        for (int pos : board.getPos(Piece.Bishop | Piece.White)) pstScore += EvalConstants.bishopTable[pos];
+        for (int pos : board.getPos(Piece.Knight | Piece.White)) pstScore += EvalConstants.knightTable[pos];
+        for (int pos : board.getPos(Piece.Rook | Piece.White)) pstScore += EvalConstants.rookTable[pos];
+        for (int pos : board.getPos(Piece.Queen | Piece.White)) pstScore += EvalConstants.queenTable[pos];
+        for (int pos : board.getPos(Piece.King | Piece.White)) pstScore += EvalConstants.kingTable[pos];
+
+        for (int pos : board.getPos(Piece.Pawn | Piece.Black)) pstScore -= EvalConstants.pawnTable[pos ^ 56];
+        for (int pos : board.getPos(Piece.Bishop | Piece.Black)) pstScore -= EvalConstants.bishopTable[pos ^ 56];
+        for (int pos : board.getPos(Piece.Knight | Piece.Black)) pstScore -= EvalConstants.knightTable[pos ^ 56];
+        for (int pos : board.getPos(Piece.Rook | Piece.Black)) pstScore -= EvalConstants.rookTable[pos ^ 56];
+        for (int pos : board.getPos(Piece.Queen | Piece.Black)) pstScore -= EvalConstants.queenTable[pos ^ 56];
+        for (int pos : board.getPos(Piece.King | Piece.Black)) pstScore -= EvalConstants.kingTable[pos ^ 56];
+
+        eval += pstScore;
+
         // The negamax algorithm requires white and black moves to be of opposite signs
         int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
         return relativeMultiplier * eval;
@@ -421,6 +439,11 @@ public class Bot {
         return squaresBoard;
     }
 
+    /**
+     * Calculates the squares attacked by a certain side (without considering the king)
+     * @param color The side to analyze
+     * @return A bitboard containing the squares under attack
+     */
     public Bitboard getAttackedSquaresWithoutKing(int color) {
         Bitboard squaresBoard = new Bitboard();
 
@@ -445,7 +468,7 @@ public class Bot {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
         Bitboard attackedSquares = getAttackedSquaresWithoutKing(otherColor);
         int targetedKingPos = board.getPos((Piece.King | color)).get(0);
-        return attackedSquares.board[targetedKingPos] == true;
+        return (attackedSquares.board[targetedKingPos] == true);
     }
 
     /**

@@ -1,4 +1,5 @@
 public class EvalConstants {
+    // Offsets for move generation
     public static final int[] kingOffsets = {-1, 1, -9, -8, -7, 7, 8, 9};
     public static final int[] queenOffsets = {-1, 1, -8, 8, -9, -7, 7, 9};
     public static final int[] rookOffsets = {-1, 1, -8, 8};
@@ -6,6 +7,7 @@ public class EvalConstants {
     public static final int[] knightOffsets = {-17, -15, 10, -6, -10, 6, 15, 17};
     public static final int[] pawnAttackOffsets = {9, 7};
 
+    // Scores for Material evaluation
     public static final int kingScore = 200000;
     public static final int queenScore = 1500;
     public static final int rookScore = 700;
@@ -13,6 +15,75 @@ public class EvalConstants {
     public static final int knightScore = 350;
     public static final int pawnScore = 100;
 
+    // Additional evaluation constants
     public static final int mobilityMultiplier = 5;
     public static final int checkScore = Integer.MAX_VALUE;
+
+    // Piece-Square Tables
+    // Note: These tables are for white. Black's evaluation must invert the table
+    public static int[] pawnTable = {
+             0,  0,  0,  0,  0,  0,  0,  0,
+            50, 50, 50, 50, 50, 50, 50, 50,
+            10, 10, 20, 30, 30, 20, 10, 10,
+             5,  5, 10, 25, 25, 10,  5,  5,
+             0,  0,  0, 20, 20,  0,  0,  0,
+             5, -5,-10,  0,  0,-10, -5,  5,
+             5, 10, 10,-20,-20, 10, 10,  5,
+             0,  0,  0,  0,  0,  0,  0,  0
+    };
+
+    public static int[] knightTable = {
+            -50,-40,-30,-30,-30,-30,-40,-50,
+            -40,-20,  0,  0,  0,  0,-20,-40,
+            -30,  0, 10, 15, 15, 10,  0,-30,
+            -30,  5, 15, 20, 20, 15,  5,-30,
+            -30,  0, 15, 20, 20, 15,  0,-30,
+            -30,  5, 10, 15, 15, 10,  5,-30,
+            -40,-20,  0,  5,  5,  0,-20,-40,
+            -50,-40,-30,-30,-30,-30,-40,-50
+    };
+
+    public static int[] bishopTable = {
+            -20,-10,-10,-10,-10,-10,-10,-20,
+            -10,  0,  0,  0,  0,  0,  0,-10,
+            -10,  0,  5, 10, 10,  5,  0,-10,
+            -10,  5,  5, 10, 10,  5,  5,-10,
+            -10,  0, 10, 10, 10, 10,  0,-10,
+            -10, 10, 10, 10, 10, 10, 10,-10,
+            -10,  5,  0,  0,  0,  0,  5,-10,
+            -20,-10,-10,-10,-10,-10,-10,-20
+    };
+
+    public static int[] rookTable = {
+             0,  0,  0,  0,  0,  0,  0,  0,
+             5, 10, 10, 10, 10, 10, 10,  5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+             0,  0,  0,  5,  5,  0,  0,  0
+    };
+
+    public static int[] queenTable = {
+             0,  0,  0,  0,  0,  0,  0,  0,
+             5, 10, 10, 10, 10, 10, 10,  5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+            -5,  0,  0,  0,  0,  0,  0, -5,
+             0,  0,  0,  5,  5,  0,  0,  0
+    };
+
+    public static int[] kingTable = {
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -30,-40,-40,-50,-50,-40,-40,-30,
+            -20,-30,-30,-40,-40,-30,-30,-20,
+            -10,-20,-20,-20,-20,-20,-20,-10,
+             20, 20,  0,  0,  0,  0, 20, 20,
+             20, 30, 10,  0,  0, 10, 30, 20
+    };
 }
