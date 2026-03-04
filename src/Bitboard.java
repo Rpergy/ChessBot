@@ -7,6 +7,8 @@ public class Bitboard {
         squares = 0;
     }
 
+    public Bitboard(long squares) { this.squares = squares; }
+
     public boolean getSquare(int index) {
         return ((squares >> index) & 1) != 0;
     }

@@ -239,6 +239,11 @@ public class Board {
         }
     }
 
+    public Bitboard getBitboard(int type) {
+        Bitboard positions = new Bitboard();
+        for (int pos : getPos(type)) positions.setSquare(pos, true);
+        return positions;
+    }
 
     /**
      * Calculates the Manhattan distance between p1 and p2

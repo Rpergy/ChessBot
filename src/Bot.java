@@ -72,7 +72,7 @@ public class Bot {
 
         ArrayList<Move> moves = generateMoves();
         if (moves.isEmpty()) {
-            if (inCheck(board.toMove)) return -EvalConstants.checkScore;
+            if (numCheckers(board.toMove) > 0) return -EvalConstants.checkScore;
             else return 0;
         }
 
@@ -178,18 +178,6 @@ public class Bot {
         return pseudoLegalMoves;
     }
 
-    public ArrayList<Move> generatePseudoMovesWithoutKing() {
-        ArrayList<Move> pseudoLegalMoves = new ArrayList<>();
-
-        pseudoLegalMoves.addAll(generatePseudoQueenMoves());
-        pseudoLegalMoves.addAll(generatePseudoRookMoves());
-        pseudoLegalMoves.addAll(generatePseudoBishopMoves());
-        pseudoLegalMoves.addAll(generatePseudoKnightMoves());
-        pseudoLegalMoves.addAll(generatePseudoPawnMoves());
-
-        return pseudoLegalMoves;
-    }
-
     private ArrayList<Move> generatePseudoKingMoves() {
         ArrayList<Integer> positions = board.getPos((Piece.King | board.toMove));
         ArrayList<Move> moves = new ArrayList<>();
@@ -219,7 +207,7 @@ public class Bot {
             int q3 = (kingColor == Piece.White) ? 59 : 3;
             boolean validKingside = (Piece.color(piece) == Piece.Black && board.blackKingCastle && board.blackCastle) || (Piece.color(piece) == Piece.White && board.whiteKingCastle && board.whiteCastle);
             boolean validQueenside = (Piece.color(piece) == Piece.Black && board.blackQueenCastle && board.blackCastle) || (Piece.color(piece) == Piece.White && board.whiteQueenCastle && board.whiteCastle);
-            boolean inCheck = inCheck(board.toMove);
+            boolean inCheck = numCheckers(board.toMove) > 0;
             // Castle Kingside
             if (!inCheck && validKingside && pos == k && board.board[rk] == (Piece.Rook | kingColor) && board.board[k1] == 0 && board.board[k2] == 0) {
                 moves.add(new Move(pos, k2, piece, false, true, false));
@@ -402,61 +390,200 @@ public class Bot {
     private ArrayList<Move> checkLegality(ArrayList<Move> moves) {
         ArrayList<Move> legalMoves = new ArrayList<>();
 
+        int otherColor = (board.toMove == Piece.White) ? Piece.Black : Piece.White;
+
         for (Move m : moves) {
-            board.makeMove(m); // Make the move we're testing
-            boolean legal = true; // Assume the move is legal
-            // If the move we made allows the opponent to capture our king next turn, it is illegal
-            for (Move counterMove : generatePseudoMoves()) {
-                if (Piece.type(board.board[counterMove.endIndex]) == Piece.King) {
-                    legal = false;
-                    break;
-                }
+            // If the king is in double check, only the king can make moves to respond
+            if (numCheckers(board.toMove) > 1 && Piece.type(m.piece) == Piece.King) {
+                board.board[m.startIndex] = 0; // Must recompute attacks with the king removed from its square
+                if (getAttacks(otherColor).getSquare(m.endIndex) == false) legalMoves.add(m);
+                board.board[m.startIndex] = Piece.King | board.toMove;
             }
-            board.unmakeMove();
-            if (legal) legalMoves.add(m);
+            // If the king is in single check, there are 3 options
+            else if (numCheckers(board.toMove) == 1) {
+                // (1) The king moves out of check
+                if (Piece.type(m.piece) == Piece.King) {
+                    board.board[m.startIndex] = 0; // Must recompute attacks with the king removed from its square
+                    if (getAttacks(otherColor).getSquare(m.endIndex) == false) legalMoves.add(m);
+                    board.board[m.startIndex] = Piece.King | board.toMove;
+                }
+                // (2) The checker is captured
+                Bitboard moveAttack = new Bitboard();
+                moveAttack.setSquare(m.endIndex, true);
+                if (Piece.type(m.piece) != Piece.King && ((getCheckers(board.toMove).squares & moveAttack.squares) > 0)) {
+                    legalMoves.add(m);
+                }
+
+                // (3) The check is blocked (sliding pieces only)
+            }
         }
 
         return legalMoves;
     }
 
-    /**
-     * Calculates the squares attacked by a certain side
-     * @param color The side to analyze
-     * @return A bitboard containing the squares under attack
-     */
-    public Bitboard getAttackedSquares(int color) {
-        Bitboard squaresBoard = new Bitboard();
 
-        int oldState = board.toMove;
-        board.toMove = color;
-        ArrayList<Move> moves = generateMoves();
-        board.toMove = oldState;
+    public Bitboard pawnAttackFrom(int square, int color) {
+        Bitboard attacks = new Bitboard();
+        int piece = Piece.Pawn | color;
 
-        for (Move m : moves) {
-            squaresBoard.setSquare(m.endIndex, true);
+        int direction = (color == Piece.White) ? -1 : 1;
+        int target;
+        for (int offset : EvalConstants.pawnAttackOffsets) { // Attack
+            target = square + direction * offset;
+            int squareFile = square % 8;
+            int targetFile = target % 8;
+            if (target < 0 || target > 63 || Math.abs(squareFile - targetFile) > 1) continue;
+            if (!Piece.compareColor(board.board[target], piece) || board.board[target] == 0) { // Valid attack
+                attacks.setSquare(target, true);
+            }
         }
 
-        return squaresBoard;
+        return attacks;
     }
 
-    /**
-     * Calculates the squares attacked by a certain side (without considering the king)
-     * @param color The side to analyze
-     * @return A bitboard containing the squares under attack
-     */
-    public Bitboard getAttackedSquaresWithoutKing(int color) {
-        Bitboard squaresBoard = new Bitboard();
+    public Bitboard bishopAttackFrom(int square, int color) {
+        Bitboard attacks = new Bitboard();
+        int piece = (Piece.Bishop | color);
+        for (int offset : EvalConstants.bishopOffsets) {
+            int currentIndex = square;
+            int target = currentIndex + offset;
+            int moveDist = Board.getManhattanDistance(currentIndex, target);
 
-        int oldState = board.toMove;
-        board.toMove = color;
-        ArrayList<Move> moves = generatePseudoMovesWithoutKing();
-        board.toMove = oldState;
+            while (target >= 0 && target < 64 && moveDist <= 2 && board.board[target] == 0) {
+                attacks.setSquare(target, true);
+                currentIndex += offset;
+                target = currentIndex + offset;
+                moveDist = Board.getManhattanDistance(currentIndex, target);
+            }
 
-        for (Move m : moves) {
-            squaresBoard.setSquare(m.endIndex, true);
+            if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(piece, board.board[target])) {
+                attacks.setSquare(target, true);
+            }
         }
 
-        return squaresBoard;
+        return attacks;
+    }
+
+    public Bitboard knightAttackFrom(int square, int color) {
+        Bitboard attacks = new Bitboard();
+        int piece = Piece.Knight | color;
+
+        for (int offset : EvalConstants.knightOffsets) {
+            int target = square + offset;
+            int squareFile = square % 8;
+            int targetFile = target % 8;
+            if (target >= 0 && target <= 63 && Math.abs(squareFile - targetFile) <= 2) {
+                if (board.board[target] == 0 || !Piece.compareColor(piece, board.board[target]))
+                    attacks.setSquare(target, true);
+            }
+        }
+
+        return attacks;
+    }
+
+    public Bitboard rookAttackFrom(int square, int color) {
+        Bitboard attacks = new Bitboard();
+        int piece = Piece.Rook | color;
+
+        for (int offset : EvalConstants.rookOffsets) {
+            int currentIndex = square;
+            int target = currentIndex + offset;
+            int moveDist = Board.getManhattanDistance(currentIndex, target);
+
+            while (target >= 0 && target < 64 && moveDist <= 2 && board.board[target] == 0) {
+                attacks.setSquare(target, true);
+                currentIndex += offset;
+                target = currentIndex + offset;
+                moveDist = Board.getManhattanDistance(currentIndex, target);
+            }
+
+            if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(piece, board.board[target])) {
+                attacks.setSquare(target, true);
+            }
+        }
+
+        return attacks;
+    }
+
+    public Bitboard queenAttackFrom(int square, int color) {
+        Bitboard attacks = new Bitboard();
+        int piece = (Piece.Queen | color);
+        for (int offset : EvalConstants.queenOffsets) {
+            int currentIndex = square;
+            int target = currentIndex + offset;
+            int moveDist = Board.getManhattanDistance(currentIndex, target);
+
+            while (target >= 0 && target < 64 && moveDist <= 2 && board.board[target] == 0) {
+                attacks.setSquare(target, true);
+                currentIndex += offset;
+                target = currentIndex + offset;
+                moveDist = Board.getManhattanDistance(currentIndex, target);
+            }
+
+            if (target >= 0 && target < 64 && moveDist <= 2 && !Piece.compareColor(piece, board.board[target])) {
+                attacks.setSquare(target, true);
+            }
+        }
+
+        return attacks;
+    }
+
+    public Bitboard attackFrom(int piece, int square) {
+        int color = Piece.color(piece);
+        int type = Piece.type(piece);
+        if (type == Piece.Pawn) return pawnAttackFrom(square, color);
+        if (type == Piece.Bishop) return bishopAttackFrom(square, color);
+        if (type == Piece.Knight) return knightAttackFrom(square, color);
+        if (type == Piece.Rook) return rookAttackFrom(square, color);
+        if (type == Piece.Queen) return queenAttackFrom(square, color);
+
+        return null;
+    }
+
+    public Bitboard getPawnAttacks(int color) {
+        ArrayList<Integer> positions = board.getPos(Piece.Pawn | color);
+        Bitboard attacks = new Bitboard();
+        for (int pos : positions) attacks.squares |= pawnAttackFrom(pos, color).squares;
+        return attacks;
+    }
+
+    public Bitboard getBishopAttacks(int color) {
+        ArrayList<Integer> positions = board.getPos(Piece.Bishop | color);
+        Bitboard attacks = new Bitboard();
+        for (int pos : positions) attacks.squares |= bishopAttackFrom(pos, color).squares;
+        return attacks;
+    }
+
+    public Bitboard getKnightAttacks(int color) {
+        ArrayList<Integer> positions = board.getPos(Piece.Knight | color);
+        Bitboard attacks = new Bitboard();
+        for (int pos : positions) attacks.squares |= knightAttackFrom(pos, color).squares;
+        return attacks;
+    }
+
+    public Bitboard getRookAttacks(int color) {
+        ArrayList<Integer> positions = board.getPos(Piece.Rook | color);
+        Bitboard attacks = new Bitboard();
+        for (int pos : positions) attacks.squares |= rookAttackFrom(pos, color).squares;
+        return attacks;
+    }
+
+    public Bitboard getQueenAttacks(int color) {
+        ArrayList<Integer> positions = board.getPos(Piece.Queen | color);
+        Bitboard attacks = new Bitboard();
+        for (int pos : positions) attacks.squares |= queenAttackFrom(pos, color).squares;
+        return attacks;
+    }
+
+    public Bitboard getAttacks(int color) {
+        Bitboard attacks = new Bitboard();
+        attacks.squares |= getPawnAttacks(color).squares;
+        attacks.squares |= getBishopAttacks(color).squares;
+        attacks.squares |= getKnightAttacks(color).squares;
+        attacks.squares |= getRookAttacks(color).squares;
+        attacks.squares |= getQueenAttacks(color).squares;
+
+        return attacks;
     }
 
     /**
@@ -464,11 +591,21 @@ public class Bot {
      * @param color The side of interest
      * @return The side of interest's check status
      */
-    public boolean inCheck(int color) {
+    public int numCheckers(int color) {
+        return Long.bitCount(getCheckers(color).squares);
+    }
+
+    public Bitboard getCheckers(int color) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
-        Bitboard attackedSquares = getAttackedSquaresWithoutKing(otherColor);
-        int targetedKingPos = board.getPos((Piece.King | color)).get(0);
-        return (attackedSquares.getSquare(targetedKingPos) == true);
+        int kingIndex = (color == Piece.White) ? board.getPos(Piece.King | Piece.White).getFirst() : board.getPos(Piece.King | Piece.Black).getFirst();
+        long checkers = 0;
+        checkers |= pawnAttackFrom(kingIndex, color).squares & board.getBitboard(Piece.Pawn | otherColor).squares;
+        checkers |= queenAttackFrom(kingIndex, color).squares & board.getBitboard(Piece.Queen | otherColor).squares;
+        checkers |= bishopAttackFrom(kingIndex, color).squares & board.getBitboard(Piece.Bishop | otherColor).squares;
+        checkers |= rookAttackFrom(kingIndex, color).squares & board.getBitboard(Piece.Rook | otherColor).squares;
+        checkers |= knightAttackFrom(kingIndex, color).squares & board.getBitboard(Piece.Knight | otherColor).squares;
+
+        return new Bitboard(checkers);
     }
 
     /**
@@ -478,7 +615,7 @@ public class Bot {
      */
     public boolean inCheckmate(int color) {
         if (!generateMovesColor(color).isEmpty()) return false;
-        return inCheck(color);
+        return numCheckers(color) > 0;
     }
 
     /**
