@@ -11,8 +11,11 @@ public class ButtonListener implements ActionListener {
 
     Bot bot;
 
+    Move lastBotMove;
+
     public ButtonListener(Bot bot) {
         this.bot = bot;
+        lastBotMove = null;
     }
 
     @Override
@@ -114,6 +117,8 @@ public class ButtonListener implements ActionListener {
                 else {
                     bot.getBoard().makeMove(move);
                     GraphicalGame.displayBoard(bot.getBoard());
+                    GraphicalGame.displayMove(lastBotMove, move);
+                    lastBotMove = move;
                 }
             }
 

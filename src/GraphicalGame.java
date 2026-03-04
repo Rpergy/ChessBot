@@ -7,6 +7,8 @@ class GraphicalGame {
     public static Color selectedEvenTileColor = new Color(250, 235, 182);
     public static Color selectedOddTileColor = new Color(199, 187, 145);
     public static Color attackColor = new Color(189, 222, 135);
+    public static Color moveEvenTileColor = new Color(244, 250, 207);
+    public static Color moveOddTileColor = new Color(206, 211, 177);
 
     static int tileSize = 90;
 
@@ -77,5 +79,31 @@ class GraphicalGame {
             else
                 tiles[i].setText(Board.getPieceCharMap().get(board.board[i]) + "");
         }
+    }
+
+    public static void displayMove(Move lastMove, Move m) {
+        // Undo setting the color of the last move
+        if (lastMove != null) {
+            if (((lastMove.startIndex / 8) + (lastMove.startIndex % 8)) % 2 == 0)
+                tiles[lastMove.startIndex].setBackground(evenTileColor);
+            else
+                tiles[lastMove.startIndex].setBackground(oddTileColor);
+
+            if (((lastMove.endIndex / 8) + (lastMove.endIndex % 8)) % 2 == 0)
+                tiles[lastMove.endIndex].setBackground(evenTileColor);
+            else
+                tiles[lastMove.endIndex].setBackground(oddTileColor);
+        }
+
+        // Set the color of the move
+        if (((m.startIndex / 8) + (m.startIndex % 8)) % 2 == 0)
+            tiles[m.startIndex].setBackground(moveEvenTileColor);
+        else
+            tiles[m.startIndex].setBackground(moveOddTileColor);
+
+        if (((m.endIndex / 8) + (m.endIndex % 8)) % 2 == 0)
+            tiles[m.endIndex].setBackground(moveEvenTileColor);
+        else
+            tiles[m.endIndex].setBackground(moveOddTileColor);
     }
 }
