@@ -1,16 +1,25 @@
 import java.util.HashMap;
 
 public class Bitboard {
-    boolean[] board;
+    long squares;
 
     public Bitboard() {
-        board = new boolean[64];
+        squares = 0;
+    }
+
+    public boolean getSquare(int index) {
+        return ((squares >> index) & 1) != 0;
+    }
+
+    public void setSquare(int index, boolean value) {
+        if (value) squares |= (1L << index);
+        else squares &= ~(1L << index);
     }
 
     public void print() {
         System.out.print("  ┌───┬───┬───┬───┬───┬───┬───┬───┐\n8 │");
-        for (int i = 0; i < board.length; i++) {
-            if (board[i] == false) { // Empty space
+        for (int i = 0; i < 64; i++) {
+            if (getSquare(i) == false) { // Empty space
                 System.out.print("   ");
             }
             else {

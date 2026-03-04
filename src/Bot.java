@@ -433,7 +433,7 @@ public class Bot {
         board.toMove = oldState;
 
         for (Move m : moves) {
-            squaresBoard.board[m.endIndex] = true;
+            squaresBoard.setSquare(m.endIndex, true);
         }
 
         return squaresBoard;
@@ -453,7 +453,7 @@ public class Bot {
         board.toMove = oldState;
 
         for (Move m : moves) {
-            squaresBoard.board[m.endIndex] = true;
+            squaresBoard.setSquare(m.endIndex, true);
         }
 
         return squaresBoard;
@@ -468,7 +468,7 @@ public class Bot {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
         Bitboard attackedSquares = getAttackedSquaresWithoutKing(otherColor);
         int targetedKingPos = board.getPos((Piece.King | color)).get(0);
-        return (attackedSquares.board[targetedKingPos] == true);
+        return (attackedSquares.getSquare(targetedKingPos) == true);
     }
 
     /**
