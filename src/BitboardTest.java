@@ -1,21 +1,42 @@
+import java.util.ArrayList;
+import java.util.Random;
+
 public class BitboardTest {
+    static long[] rookMasks = new long[64];
+    static long[] rookMagicNumbers = new long[64];
+    static long[][] rookAttackTables = new long[64][];
+    static int[] rookShifts = new int[64];
+
     public static void main(String[] args) {
-        long[] bishopMasks = new long[64];
-        long[] rookMasks = new long[64];
-        long[] queenMasks = new long[64];
+        initializeRookData();
+        long occupancy = 0;
+        occupancy = Bitboard.setSquare(occupancy, 43, true);
+        occupancy = Bitboard.setSquare(occupancy, 30, true);
+        occupancy = Bitboard.setSquare(occupancy, 26, true);
+        Bitboard.print(getRookMoves(27, occupancy));
+    }
 
-        for (int i = 0; i < 64; i++)
-            bishopMasks[i] = getBishopMask(i);
-
+    public static void initializeRookData() {
+        for (int i = 0; i < 64; i++) rookMasks[i] = getRookMask(i);
         for (int i = 0; i < 64; i++) {
-            rookMasks[i] = getRookMask(i);
-        }
+            rookMagicNumbers[i] = findMagicNumber(i, rookMasks[i]);
 
-        for (int i = 0; i < 64; i++) {
-            queenMasks[i] = getBishopMask(i) | getRookMask(i);
-        }
+            int relevantBits = Long.bitCount(rookMasks[i]);
+            rookShifts[i] = 64 - relevantBits;
 
-        Bitboard.print(queenMasks[27]);
+            rookAttackTables[i] = getRookAttacks(i, rookMasks[i], rookMagicNumbers[i]);
+        }
+    }
+
+    public static long getRookMoves(int square, long occupancy) {
+        long blockers = occupancy & rookMasks[square];
+
+        long magic = rookMagicNumbers[square];
+        int shift = rookShifts[square];
+
+        int index = (int)((blockers * magic) >>> shift);
+
+        return rookAttackTables[square][index];
     }
 
     public static long getRookMask(int index) {
@@ -80,5 +101,103 @@ public class BitboardTest {
         }
 
         return bishopMask;
+    }
+
+    public static long[] getRookAttacks(int square, long mask, long magic) {
+        int relevantBits = Long.bitCount(mask);
+        int tableSize = 1 << relevantBits;
+        long[] attacks = new long[tableSize];
+
+        long subset = 0;
+        do {
+            long blockers = subset;
+
+            long attack = computeRookAttacks(square, blockers);
+
+            int index = (int)((blockers * magic) >>> (64 - relevantBits));
+
+            attacks[index] = attack;
+
+            subset = (subset - mask) & mask;
+        } while (subset != 0);
+
+        return attacks;
+    }
+
+    public static long computeRookAttacks(int index, long blockers) {
+        long attacks = 0;
+
+        int rank = index / 8;
+        int file = index % 8;
+
+        // Up attack
+        for (int r = rank + 1; r <= 7; r++) {
+            int square = r * 8 + file;
+            attacks |= 1L << square;
+            if ((blockers & (1L << square)) != 0) break;
+        }
+
+        // Down attack
+        for (int r = rank - 1; r >= 0; r--) {
+            int square = r * 8 + file;
+            attacks |= 1L << square;
+            if ((blockers & (1L << square)) != 0) break;
+        }
+
+        // Right attack
+        for (int f = file + 1; f <= 7; f++) {
+            int square = rank * 8 + f;
+            attacks |= 1L << square;
+            if ((blockers & (1L << square)) != 0) break;
+        }
+
+        // Left attack
+        for (int f = file - 1; f >= 0; f--) {
+            int square = rank * 8 + f;
+            attacks |= 1L << square;
+            if ((blockers & (1L << square)) != 0) break;
+        }
+
+        return attacks;
+    }
+
+    public static long findMagicNumber(int square, long mask) {
+        Random random = new Random();
+
+        int relevantBits = Long.bitCount(mask);
+        int tableSize = 1 << relevantBits;
+
+        while (true) { // Loop through all possible magic numbers
+            // Generate a random magic number
+            long magic = random.nextLong() & random.nextLong() & random.nextLong();
+            boolean collision = false;
+
+            long[] used = new long[tableSize]; // Keeps track of which attack bitboard actually uses the index (constructive collisions)
+            boolean[] filled = new boolean[tableSize]; // Keeps track of if an index has already been used
+
+            // Loop through all the subsets.
+            // If the magic number generates the same index twice (a collision), it is not good
+            long subset = 0;
+            do {
+                long blockers = subset;
+                long attack = computeRookAttacks(square, blockers);
+
+                int index = (int)((blockers * magic) >>> (64 - relevantBits));
+
+                if (!filled[index]) {
+                    filled[index] = true;
+                    used[index] = attack;
+                }
+                // Collision found
+                else if (used[index] != attack) {
+                    collision = true;
+                    break;
+                }
+
+                subset = (subset - mask) & mask;
+            } while (subset != 0);
+
+            if (!collision) return magic;
+        }
     }
 }
