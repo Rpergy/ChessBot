@@ -259,6 +259,11 @@ public class Board {
         return Math.abs(rank1 - rank2) + Math.abs(file1 - file2);
     }
 
+    public static int getRank(int index) { return index / 8; }
+    public static int getFile(int index) { return index % 8; }
+
+    public static int toIndex(int rank, int file) { return (rank * 8) + file; }
+
     /**
      * Returns a HashMap that maps FEN characters to piece IDs
      * @return A HashMap that maps FEN characters to piece IDs
