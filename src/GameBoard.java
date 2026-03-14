@@ -4,6 +4,9 @@ import java.util.HashMap;
 public class GameBoard {
     HashMap<Integer, Long> pieceBitboards;
 
+    boolean whiteQueenCastle, whiteKingCastle = true;
+    boolean blackQueenCastle, blackKingCastle = true;
+
     public GameBoard(String fen) {
         pieceBitboards = new HashMap<>();
 
@@ -32,6 +35,13 @@ public class GameBoard {
                 }
             }
             rank--;
+        }
+
+        if (fen.split(" ").length > 2) {
+            whiteKingCastle = (fen.split(" ")[2].indexOf('K') != -1);
+            whiteQueenCastle = (fen.split(" ")[2].indexOf('Q') != -1);
+            blackKingCastle = (fen.split(" ")[2].indexOf('k') != -1);
+            blackQueenCastle = (fen.split(" ")[2].indexOf('q') != -1);
         }
     }
 
@@ -177,6 +187,27 @@ public class GameBoard {
             }
         }
 
+        // Castling
+        boolean kingsideCastle = (color == Piece.White) ? whiteKingCastle : blackKingCastle;
+        boolean queensideCastle = (color == Piece.White) ? whiteQueenCastle : blackQueenCastle;
+
+        int kingRookIndex = (color == Piece.White) ? 7 : 63;
+        int queenRookIndex = (color == Piece.White) ? 0 : 56;
+
+        kingsideCastle = kingsideCastle && (((1L << kingRookIndex) & getPieceBitboard(Piece.Rook | color)) != 0);
+        queensideCastle = queensideCastle && (((1L << queenRookIndex) & getPieceBitboard(Piece.Rook | color)) != 0);
+
+        long kingsideEmptyMask = (color == Piece.White) ? (0b11L << 5) : (0b11L << 61);
+        long queensideEmptyMask = (color == Piece.White) ? (0b111L << 1) : (0b11L << 57);
+
+        kingsideCastle = kingsideCastle && ((kingsideEmptyMask & getOccupancy()) == 0);
+        queensideCastle = queensideCastle && ((queensideEmptyMask & getOccupancy()) == 0);
+
+        int kingPos = (color == Piece.White) ? 4 : 60;
+
+        if (kingsideCastle) moves.add(new Move(kingPos, kingPos + 2, (Piece.King | color), false, true, false));
+        if (queensideCastle) moves.add(new Move(kingPos, kingPos - 2, (Piece.King | color), false, true, false));
+
         return moves;
     }
 
@@ -189,6 +220,7 @@ public class GameBoard {
             int from = Long.numberOfTrailingZeros(pawns);
             pawns &= pawns - 1;
 
+            // Attack
             long attacks = MoveLookups.getPawnAttacks(from);
             attacks &= ~getColorBitboard(color);
             attacks &= getColorBitboard(otherColor);
@@ -209,6 +241,7 @@ public class GameBoard {
                     moves.add(new Move(from, to, (Piece.Pawn | color), true, false, false));
             }
 
+            // Push
             long push = MoveLookups.getPawnMoves(from);
             push &= ~getColorBitboard(color);
 
@@ -225,6 +258,17 @@ public class GameBoard {
                     moves.add(new Move(from, to, (Piece.Pawn | color), false, (Piece.Bishop | color)));
                 } else
                     moves.add(new Move(from, to, (Piece.Pawn | color)));
+            }
+
+            // Double Pushers
+            int doublePushRank = (color == Piece.White) ? 1 : 6;
+            if (from / 8 == doublePushRank) {
+                int moveDirection = (color == Piece.White) ? 8 : -8;
+                long blockerMask = ((1L << (from + moveDirection)) | (1L << (from + 2 * moveDirection)));
+                if ((blockerMask & getOccupancy()) == 0) {
+                    int to = from + 2 * moveDirection;
+                    moves.add(new Move(from, to, (Piece.Pawn | color)));
+                }
             }
         }
 

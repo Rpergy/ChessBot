@@ -49,6 +49,12 @@ public class Move {
         promotion = move.promotion;
     }
 
+    public boolean Equals(Object o) {
+        if (o.getClass() != this.getClass()) return false;
+        Move m = (Move)o;
+        return (m.startIndex == this.startIndex) && (m.endIndex == this.endIndex);
+    }
+
 
     public String toString() {
         char cap = (isCapture) ? 'C' : ' ';
