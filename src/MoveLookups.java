@@ -53,6 +53,70 @@ public class MoveLookups {
         return getBishopMoves(square, occupancy) | getRookMoves(square, occupancy);
     }
 
+    public static long getKnightMoves(int square) {
+        long moves = 0L;
+
+        int rank = square / 8;
+        int file = square % 8;
+
+        if (rank > 1 && file < 7) moves |= 1L << (square + MoveConstants.knightOffsets[6]); // -15
+        if (rank > 1 && file > 0) moves |= 1L << (square + MoveConstants.knightOffsets[7]); // -17
+
+        if (rank < 6 && file > 0) moves |= 1L << (square + MoveConstants.knightOffsets[2]); // 15
+        if (rank < 6 && file < 7) moves |= 1L << (square + MoveConstants.knightOffsets[3]); // 17
+
+        if (file > 1 && rank > 0) moves |= 1L << (square + MoveConstants.knightOffsets[0]); // -10
+        if (file > 1 && rank < 7) moves |= 1L << (square + MoveConstants.knightOffsets[1]); // 6
+
+        if (file < 6 && rank < 7) moves |= 1L << (square + MoveConstants.knightOffsets[4]); // 10
+        if (file < 6 && rank > 0) moves |= 1L << (square + MoveConstants.knightOffsets[5]); // -6
+
+        return moves;
+    }
+
+    public static long getKingMoves(int square) {
+        long moves = 0L;
+
+        int rank = square / 8;
+        int file = square % 8;
+
+        if (file > 0 && rank > 0) moves |= 1L << (square + MoveConstants.kingOffsets[0]);
+        if (file > 0) moves |= 1L << (square + MoveConstants.kingOffsets[1]);
+        if (file > 0 && rank < 7) moves |= 1L << (square + MoveConstants.kingOffsets[2]);
+        if (rank < 7) moves |= 1L << (square + MoveConstants.kingOffsets[3]);
+        if (rank < 7 && file < 7) moves |= 1L << (square + MoveConstants.kingOffsets[4]);
+        if (file < 7) moves |= 1L << (square + MoveConstants.kingOffsets[5]);
+        if (rank > 0 && file < 7) moves |= 1L << (square + MoveConstants.kingOffsets[6]);
+        if (rank > 0) moves |= 1L << (square + MoveConstants.kingOffsets[7]);
+
+        return moves;
+    }
+
+    public static long getPawnMoves(int square) {
+        long moves = 0L;
+
+        int rank = square / 8;
+        int file = square % 8;
+
+        if (rank < 7) moves |= 1L << (square + MoveConstants.pawnOffsets[1]);
+
+        return moves;
+    }
+
+    public static long getPawnAttacks(int square) {
+        long attacks = 0L;
+
+        int rank = square / 8;
+        int file = square % 8;
+
+        if (rank < 7) {
+            if (file > 0) attacks |= 1L << (square + MoveConstants.pawnOffsets[0]);
+            if (file < 7) attacks |= 1L << (square + MoveConstants.pawnOffsets[2]);
+        }
+
+        return attacks;
+    }
+
     public static long[] getRookAttacks(int square, long mask, long magic) {
         int relevantBits = Long.bitCount(mask);
         int tableSize = 1 << relevantBits;

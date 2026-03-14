@@ -3,10 +3,8 @@ import java.util.HashMap;
 
 public class GameBoard {
     HashMap<Integer, Long> pieceBitboards;
-    HashMap<Integer, ArrayList<Integer>> piecePositions;
 
     public GameBoard(String fen) {
-        piecePositions = new HashMap<>();
         pieceBitboards = new HashMap<>();
 
         loadFen(fen);
@@ -28,10 +26,6 @@ public class GameBoard {
                     int pieceType = fenMap.get(square);
                     int index = rank * 8 + file;
 
-                    if (!piecePositions.containsKey(pieceType))
-                        piecePositions.put(pieceType, new ArrayList<Integer>());
-                    piecePositions.get(pieceType).add(index);
-
                     long oldBitboard = pieceBitboards.getOrDefault(pieceType, 0L);
                     pieceBitboards.put(pieceType, oldBitboard | (1L << index));
                     file ++;
@@ -39,6 +33,202 @@ public class GameBoard {
             }
             rank--;
         }
+    }
+
+    public ArrayList<Move> getLegalMoves(int color) {
+        ArrayList<Move> moves = new ArrayList<>();
+
+        moves.addAll(getRookMoves(color));
+        moves.addAll(getBishopMoves(color));
+        moves.addAll(getKnightMoves(color));
+        moves.addAll(getQueenMoves(color));
+        moves.addAll(getKingMoves(color));
+        moves.addAll(getPawnMoves(color));
+
+        return moves;
+    }
+
+    public ArrayList<Move> getRookMoves(int color) {
+        ArrayList<Move> moves = new ArrayList<>();
+        long occupancy = getOccupancy();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        // Rook Moves
+        long rooks = getPieceBitboard(Piece.Rook | color);
+        while (rooks != 0) {
+            int from = Long.numberOfTrailingZeros(rooks);
+            rooks &= rooks - 1;
+            long attacks = MoveLookups.getRookMoves(from, occupancy);
+
+            attacks &= ~getColorBitboard(color);
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.Rook | color), capture, false, false));
+            }
+        }
+
+        return moves;
+    }
+
+    public ArrayList<Move> getBishopMoves(int color) {
+        ArrayList<Move> moves = new ArrayList<>();
+        long occupancy = getOccupancy();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        // Bishop Moves
+        long bishops = getPieceBitboard(Piece.Bishop | color);
+        while (bishops != 0) {
+            int from = Long.numberOfTrailingZeros(bishops);
+            bishops &= bishops - 1;
+            long attacks = MoveLookups.getBishopMoves(from, occupancy);
+
+            attacks &= ~getColorBitboard(color);
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.Bishop | color), capture, false, false));
+            }
+        }
+
+        return moves;
+    }
+
+    public ArrayList<Move> getKnightMoves(int color) {
+        ArrayList<Move> moves = new ArrayList<>();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long knights = getPieceBitboard(Piece.Knight | color);
+        while (knights != 0) {
+            int from = Long.numberOfTrailingZeros(knights);
+            knights &= knights - 1;
+
+            long attacks = MoveLookups.getKnightMoves(from);
+
+            attacks &= ~getColorBitboard(color);
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.Knight | color), capture, false, false));
+            }
+        }
+
+        return moves;
+    }
+
+    public ArrayList<Move> getQueenMoves(int color) {
+        ArrayList<Move> moves = new ArrayList<>();
+        long occupancy = getOccupancy();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long queens = getPieceBitboard(Piece.Queen | color);
+        while (queens != 0) {
+            int from = Long.numberOfTrailingZeros(queens);
+            queens &= queens - 1;
+            long attacks = MoveLookups.getQueenMoves(from, occupancy);
+
+            attacks &= ~getColorBitboard(color);
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.Queen | color), capture, false, false));
+            }
+        }
+
+        return moves;
+    }
+
+    public ArrayList<Move> getKingMoves(int color) {
+        ArrayList<Move> moves = new ArrayList<>();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long kings = getPieceBitboard(Piece.King | color);
+        while (kings != 0) {
+            int from = Long.numberOfTrailingZeros(kings);
+            kings &= kings - 1;
+
+            long attacks = MoveLookups.getKingMoves(from);
+
+            attacks &= ~getColorBitboard(color);
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.King | color), capture, false, false));
+            }
+        }
+
+        return moves;
+    }
+
+    public ArrayList<Move> getPawnMoves(int color) {
+        ArrayList<Move> moves = new ArrayList<>();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long pawns = getPieceBitboard(Piece.Pawn | color);
+        while (pawns != 0) {
+            int from = Long.numberOfTrailingZeros(pawns);
+            pawns &= pawns - 1;
+
+            long attacks = MoveLookups.getPawnAttacks(from);
+            attacks &= ~getColorBitboard(color);
+            attacks &= getColorBitboard(otherColor);
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                int promotionRank = (color == Piece.White) ? 7 : 0;
+
+                if (to / 8 == promotionRank) {
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, (Piece.Queen | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, (Piece.Rook | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, (Piece.Knight | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, (Piece.Bishop | color)));
+                }
+                else
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, false, false));
+            }
+
+            long push = MoveLookups.getPawnMoves(from);
+            push &= ~getColorBitboard(color);
+
+            while (push != 0) {
+                int to = Long.numberOfTrailingZeros(push);
+                push &= push - 1;
+
+                int promotionRank = (color == Piece.White) ? 7 : 0;
+
+                if (to / 8 == promotionRank) {
+                    moves.add(new Move(from, to, (Piece.Pawn | color), false, (Piece.Queen | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), false, (Piece.Rook | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), false, (Piece.Knight | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), false, (Piece.Bishop | color)));
+                } else
+                    moves.add(new Move(from, to, (Piece.Pawn | color)));
+            }
+        }
+
+        return moves;
     }
 
     public long getPieceBitboard(int piece) {
@@ -61,6 +251,8 @@ public class GameBoard {
                     getPieceBitboard(Piece.Queen | Piece.Black) |
                     getPieceBitboard(Piece.King | Piece.Black);
     }
+
+    public long getOccupancy() { return getColorBitboard(Piece.White) | getColorBitboard(Piece.Black); }
 
     private static HashMap<Character, Integer> getFenMap() {
         HashMap<Character, Integer> fenMap = new HashMap<>();
@@ -89,13 +281,5 @@ public class GameBoard {
         }
 
         return inverse;
-    }
-
-    public void printPieceMap() {
-        for(HashMap.Entry<Integer, ArrayList<Integer>> e : piecePositions.entrySet()) {
-            System.out.print(getInverseFenMap().get(e.getKey()) + ": ");
-            System.out.print(e.getValue());
-            System.out.println();
-        }
     }
 }

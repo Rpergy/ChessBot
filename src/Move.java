@@ -62,9 +62,9 @@ public class Move {
         else if (Piece.compareType(promotion, Piece.Knight)) prom = 'n';
 
         String[] files = {"a", "b", "c", "d", "e", "f", "g", "h"};
-        int startRank = 8 - (startIndex / 8);
+        int startRank = (startIndex / 8) + 1;
         String startFile = files[startIndex % 8];
-        int endRank = 8 - (endIndex / 8);
+        int endRank = (endIndex / 8) + 1;
         String endFile = files[endIndex % 8];
 
         return startFile + startRank + " " + endFile + endRank + " " + piece + cap + cas + prom + pas;
