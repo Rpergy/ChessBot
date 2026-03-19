@@ -92,29 +92,42 @@ public class MoveLookups {
         return moves;
     }
 
-    public static long getPawnMoves(int square) {
+    public static long getPawnMoves(int square, int color) {
         long moves = 0L;
 
         int rank = square / 8;
         int file = square % 8;
 
-        if (rank < 7) moves |= 1L << (square + MoveConstants.pawnOffsets[1]);
+        int direction = (color == Piece.White) ? 1 : -1;
+
+        if (rank < 7) moves |= 1L << (square + direction * MoveConstants.pawnOffsets[1]);
 
         return moves;
     }
 
-    public static long getPawnAttacks(int square) {
+    public static long getPawnAttacks(int square, int color) {
         long attacks = 0L;
 
         int rank = square / 8;
         int file = square % 8;
 
-        if (rank < 7) {
-            if (file > 0) attacks |= 1L << (square + MoveConstants.pawnOffsets[0]);
-            if (file < 7) attacks |= 1L << (square + MoveConstants.pawnOffsets[2]);
+        int direction = (color == Piece.White) ? 1 : -1;
+
+        if (rank < 7 && rank > 0) {
+            if (file > 0) attacks |= 1L << (square + direction * MoveConstants.pawnOffsets[0]);
+            if (file < 7) attacks |= 1L << (square + direction * MoveConstants.pawnOffsets[2]);
         }
 
         return attacks;
+    }
+
+    public static long getPawnAttacksTo(int square, int color) {
+        long board = 1L << square;
+
+        if (color == Piece.White)
+            return ((board >>> 7) & ~Bitboard.getFile(0)) | ((board >>> 9) & ~Bitboard.getFile(7));
+        else
+            return ((board << 7) & ~Bitboard.getFile(7)) | ((board << 9) & ~Bitboard.getFile(0));
     }
 
     public static long[] getRookAttacks(int square, long mask, long magic) {

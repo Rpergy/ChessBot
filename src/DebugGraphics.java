@@ -7,7 +7,7 @@ import java.util.ArrayList;
 public class DebugGraphics {
     public static void main(String[] args) {
         MoveLookups.initializeData();
-        GameBoard board = new GameBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq");
+        GameBoard board = new GameBoard("8/8/8/k3r1K1/8/8/8/6r1 w - - 0 1");
 
         drawBoardMoves(board);
     }
@@ -34,7 +34,8 @@ public class DebugGraphics {
 
         drawEmptyTiles(~board.getOccupancy(), frame, squares);
 
-        displayMoves(board, squares);
+//        displayMoves(board, squares);
+        displayBitboard(board.getAttackBitboard(Piece.Black), squares);
 
         frame.setSize(735, 800);
 
@@ -108,6 +109,20 @@ public class DebugGraphics {
             squares[m.endIndex].setBackground(moveTileColor);
 
             System.out.println(m);
+        }
+    }
+
+    static void displayBitboard(long board, JButton[] squares) {
+        while (board != 0) {
+            int currentSquare = Long.numberOfTrailingZeros(board);
+            int rank = currentSquare / 8;
+            int file = currentSquare % 8;
+
+            Color moveTileColor = ((rank + file) % 2 == 0) ? moveOddTileColor : moveEvenTileColor;
+
+            squares[currentSquare].setBackground(moveTileColor);
+
+            board &= board - 1;
         }
     }
 }

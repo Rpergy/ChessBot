@@ -23,6 +23,52 @@ public class Bitboard {
         return squares;
     }
 
+    public static long squaresBetween(int s1, int s2) {
+        long mask = 0L;
+
+        int rank1 = s1 / 8;
+        int file1 = s1 % 8;
+        int rank2 = s2 / 8;
+        int file2 = s2 % 8;
+        if (rank1 == rank2) { // Horizontal Movement
+            int start = Math.min(file1, file2);
+            int end = Math.max(file1, file2);
+            for (int i = start; i <= end; i++) mask |= 1L << (rank1 * 8 + i);
+        }
+        else if (file1 == file2) { // Vertical Movement
+            int start = Math.min(rank1, rank2);
+            int end = Math.max(rank1, rank2);
+            for (int i = start; i <= end; i++) mask |= 1L << (i * 8 + file1);
+        }
+        else { // Diagonal Movement
+            int rankStep = (rank2 > rank1) ? 1 : -1;
+            int fileStep = (file2 > file1) ? 1 : -1;
+
+            int r = rank1;
+            int f = file1;
+
+            while (r != rank2 && f != file2) {
+                mask |= 1L << (r * 8 + f);
+                r += rankStep;
+                f += fileStep;
+            }
+            mask |= 1L << (r * 8 + f);
+        }
+
+        return mask;
+    }
+
+    public static long getFile(int file) {
+        long mask = 0L;
+        int index = file;
+        while (index < 64) {
+            mask |= (1L << index);
+            index += 8;
+        }
+
+        return mask;
+    }
+
     public void print() {
         System.out.print("  ┌───┬───┬───┬───┬───┬───┬───┬───┐\n8 │");
         for (int i = 0; i < 64; i++) {
