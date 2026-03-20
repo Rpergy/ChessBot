@@ -250,8 +250,8 @@ public class GameBoard {
             if (from / 8 == doublePushRank) {
                 int moveDirection = (color == Piece.White) ? 8 : -8;
                 long blockerMask = ((1L << (from + moveDirection)) | (1L << (from + 2 * moveDirection)));
-                if ((blockerMask & getOccupancy()) == 0) {
-                    int to = from + 2 * moveDirection;
+                int to = from + 2 * moveDirection;
+                if ((blockerMask & getOccupancy()) == 0 && (((1L << to) & blockMask) != 0)) {
                     moves.add(new Move(from, to, (Piece.Pawn | color)));
                 }
             }
@@ -273,7 +273,12 @@ public class GameBoard {
 
             attacks &= ~getColorBitboard(color);
 
+            long presentKing = getPieceBitboard(Piece.King | color);
+            long removeKing = Bitboard.setSquare(pieceBitboards.get((Piece.King | color)), from, false);
+
+            pieceBitboards.put((Piece.King | color), removeKing);
             attacks &= ~getAttackBitboard(otherColor);
+            pieceBitboards.put((Piece.King | color), presentKing);
 
             while (attacks != 0) {
                 int to = Long.numberOfTrailingZeros(attacks);
@@ -303,8 +308,10 @@ public class GameBoard {
 
         int kingPos = (color == Piece.White) ? 4 : 60;
 
-        if (kingsideCastle) moves.add(new Move(kingPos, kingPos + 2, (Piece.King | color), false, true, false));
-        if (queensideCastle) moves.add(new Move(kingPos, kingPos - 2, (Piece.King | color), false, true, false));
+        boolean inCheck = (((1L << kingPos) & getAttackBitboard(otherColor)) != 0);
+
+        if (kingsideCastle && !inCheck) moves.add(new Move(kingPos, kingPos + 2, (Piece.King | color), false, true, false));
+        if (queensideCastle && !inCheck) moves.add(new Move(kingPos, kingPos - 2, (Piece.King | color), false, true, false));
 
         return moves;
     }
@@ -329,7 +336,7 @@ public class GameBoard {
 
         long queens = getPieceBitboard(Piece.Queen | color);
         while (queens != 0) {
-            int square = Long.numberOfTrailingZeros(bishops);
+            int square = Long.numberOfTrailingZeros(queens);
             attacks |= MoveLookups.getQueenMoves(square, occupancy);
             queens &= queens - 1;
         }

@@ -1,22 +1,22 @@
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Random;
 
 // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq
 
 public class DebugGraphics {
     public static void main(String[] args) {
         MoveLookups.initializeData();
-        GameBoard board = new GameBoard("8/8/8/k3r1K1/8/8/8/6r1 w - - 0 1");
+        GameBoard board = new GameBoard("rnbqk1nr/pppppppp/8/8/1b6/8/PPP1PPPP/RNBQK2R w KQkq - 0 1");
 
         drawBoardMoves(board);
     }
 
-
-    public static Color evenTileColor = new Color(245, 237, 223);
-    public static Color oddTileColor = new Color(156, 138, 104);
-    public static Color moveEvenTileColor = new Color(244, 250, 207);
-    public static Color moveOddTileColor = new Color(206, 211, 177);
+    public static Color evenTileColor = new Color(240,217,181);
+    public static Color oddTileColor = new Color(181, 136, 99);
+    public static Color moveEvenTileColor = new Color(174, 177, 135);
+    public static Color moveOddTileColor = new Color(138, 153, 87);
 
     static int tileSize = 90;
 
@@ -25,17 +25,13 @@ public class DebugGraphics {
 
         JButton[] squares = new JButton[64];
 
-        int[] pieceValues = { (Piece.Pawn | Piece.White), (Piece.Knight | Piece.White), (Piece.Bishop | Piece.White), (Piece.Rook | Piece.White), (Piece.Queen | Piece.White), (Piece.King | Piece.White),
-                              (Piece.Pawn | Piece.Black), (Piece.Knight | Piece.Black), (Piece.Bishop | Piece.Black), (Piece.Rook | Piece.Black), (Piece.Queen | Piece.Black), (Piece.King | Piece.Black) };
-
-        for (int value : pieceValues) {
+        for (int value : Piece.PIECE_VALUES) {
             drawTiles(value, board, frame, squares);
         }
 
         drawEmptyTiles(~board.getOccupancy(), frame, squares);
 
-//        displayMoves(board, squares);
-        displayBitboard(board.getAttackBitboard(Piece.Black), squares);
+        displayMoves(board, squares);
 
         frame.setSize(735, 800);
 

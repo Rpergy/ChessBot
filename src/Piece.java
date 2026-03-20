@@ -9,6 +9,9 @@ public class Piece {
     public static int White = 8;
     public static int Black = 16;
 
+    public static int[] PIECE_VALUES = { (Piece.Pawn | Piece.White), (Piece.Knight | Piece.White), (Piece.Bishop | Piece.White), (Piece.Rook | Piece.White), (Piece.Queen | Piece.White), (Piece.King | Piece.White),
+                                         (Piece.Pawn | Piece.Black), (Piece.Knight | Piece.Black), (Piece.Bishop | Piece.Black), (Piece.Rook | Piece.Black), (Piece.Queen | Piece.Black), (Piece.King | Piece.Black) };
+
     public static int color(int piece) {
         return 0b11000 & piece;
     }

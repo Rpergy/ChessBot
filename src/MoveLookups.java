@@ -402,4 +402,60 @@ public class MoveLookups {
             if (!collision) return magic;
         }
     }
+
+    /* PINNED PIECES */
+    public static long computeRookPinRays(int rookPos, int kingPos) {
+        long mask = 0L;
+
+        int rookRank = rookPos / 8;
+        int rookFile = rookPos % 8;
+
+        int kingRank = kingPos / 8;
+        int kingFile = kingPos % 8;
+
+        if (rookRank == kingRank) {
+            int start = Math.min(rookFile, kingFile);
+            int end = Math.max(rookFile, kingFile);
+            for (int f = start; f <= end; f++) {
+                mask |= (1L << (rookRank * 8 + f));
+            }
+        }
+        if (rookFile == kingFile) {
+            int start = Math.min(rookRank, kingRank);
+            int end = Math.max(rookRank, kingRank);
+            for (int r = start; r <= end; r++) {
+                mask |= (1L << (r * 8 + rookFile));
+            }
+        }
+
+        return mask;
+    }
+
+    public static long computeBishopPinRays(int bishopPos, int kingPos) {
+        long mask = 0L;
+
+        int bishopRank = bishopPos / 8;
+        int bishopFile = bishopPos % 8;
+
+        int kingRank = kingPos / 8;
+        int kingFile = kingPos % 8;
+
+        if (kingFile - bishopFile == kingRank - bishopRank) {
+            int rank = kingRank;
+            int file = kingFile;
+
+            int rankDirection = (kingRank > bishopRank) ? -1 : 1;
+            int fileDirection = (kingFile > bishopFile) ? -1 : 1;
+
+            while (rank != bishopRank && file != bishopFile) {
+                mask |= (1L << (rank * 8 + file));
+
+                rank += rankDirection;
+                file += fileDirection;
+            }
+            mask |= (1L << (rank * 8 + file));
+        }
+
+        return mask;
+    }
 }
