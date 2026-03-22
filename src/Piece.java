@@ -39,12 +39,4 @@ public class Piece {
         int color = 0b11000 & piece;
         return color == targetColor;
     }
-
-    public static boolean isStraightSliding(int piece) {
-        return isType(piece, Piece.Rook) || isType(piece, Piece.Queen);
-    }
-
-    public static boolean isDiagonalSliding(int piece) {
-        return isType(piece, Piece.Bishop) || isType(piece, Piece.Queen);
-    }
 }
