@@ -8,7 +8,7 @@ import java.util.Random;
 public class DebugGraphics {
     public static void main(String[] args) {
         MoveLookups.initializeData();
-        GameBoard board = new GameBoard("rnbqk1nr/pppppppp/8/8/1b6/8/PPP1PPPP/RNBQK2R w KQkq - 0 1");
+        GameBoard board = new GameBoard("8/3q2q1/8/5B2/1rB3K1/8/8/8 w - - 0 1");
 
         drawBoardMoves(board);
     }

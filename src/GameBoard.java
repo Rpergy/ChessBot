@@ -84,13 +84,19 @@ public class GameBoard {
 
         // Rook Moves
         long rooks = getPieceBitboard(Piece.Rook | color);
+
         while (rooks != 0) {
             int from = Long.numberOfTrailingZeros(rooks);
+
+            long pinMask = getPinMask(color, from);
 
             rooks &= rooks - 1;
             long attacks = MoveLookups.getRookMoves(from, occupancy);
 
             attacks &= ~getColorBitboard(color);
+
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
 
             attacks &= blockMask;
 
@@ -116,8 +122,14 @@ public class GameBoard {
         long bishops = getPieceBitboard(Piece.Bishop | color);
         while (bishops != 0) {
             int from = Long.numberOfTrailingZeros(bishops);
+
+            long pinMask = getPinMask(color, from);
+
             bishops &= bishops - 1;
             long attacks = MoveLookups.getBishopMoves(from, occupancy);
+
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
 
             attacks &= ~getColorBitboard(color);
 
@@ -145,7 +157,12 @@ public class GameBoard {
             int from = Long.numberOfTrailingZeros(knights);
             knights &= knights - 1;
 
+            long pinMask = getPinMask(color, from);
+
             long attacks = MoveLookups.getKnightMoves(from);
+
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
 
             attacks &= ~getColorBitboard(color);
 
@@ -173,7 +190,13 @@ public class GameBoard {
         while (queens != 0) {
             int from = Long.numberOfTrailingZeros(queens);
             queens &= queens - 1;
+
+            long pinMask = getPinMask(color, from);
+
             long attacks = MoveLookups.getQueenMoves(from, occupancy);
+
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
 
             attacks &= ~getColorBitboard(color);
 
@@ -201,10 +224,15 @@ public class GameBoard {
             int from = Long.numberOfTrailingZeros(pawns);
             pawns &= pawns - 1;
 
+            long pinMask = getPinMask(color, from);
+
             // Attack
             long attacks = MoveLookups.getPawnAttacks(from, color);
             attacks &= ~getColorBitboard(color);
             attacks &= getColorBitboard(otherColor);
+
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
 
             attacks &= blockMask;
 
@@ -227,6 +255,9 @@ public class GameBoard {
             // Push
             long push = MoveLookups.getPawnMoves(from, color);
             push &= ~getColorBitboard(color);
+
+            if ((pinMask & (1L << from)) != 0)
+                push &= pinMask;
 
             push &= blockMask;
 
@@ -370,6 +401,44 @@ public class GameBoard {
         long pawnAttackers = getPieceBitboard(Piece.Pawn | otherColor) & MoveLookups.getPawnAttacksTo(kingSq, otherColor);
 
         return rookAttackers | bishopAttackers | queenAttackers | knightAttackers | pawnAttackers;
+    }
+
+    public long getPinMask(int color, int piecePos) {
+        long mask = 0L;
+        int kingPos = Long.numberOfTrailingZeros(getPieceBitboard(Piece.King | color));
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long straights = getPieceBitboard(Piece.Rook | otherColor) | getPieceBitboard(Piece.Queen | otherColor);
+        while (straights != 0) {
+            int rookPos = Long.numberOfTrailingZeros(straights);
+
+            long pinRay = MoveLookups.computeRookPinRays(rookPos, kingPos);
+
+            boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
+            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(rookPos, kingPos)) == 2;
+
+            if (containsPiece && pinSetup)
+                mask |= pinRay;
+
+            straights &= straights - 1;
+        }
+
+        long diagonals = getPieceBitboard(Piece.Bishop | otherColor) | getPieceBitboard(Piece.Queen | otherColor);
+        while (diagonals != 0) {
+            int bishopPos = Long.numberOfTrailingZeros(diagonals);
+
+            long pinRay = MoveLookups.computeBishopPinRays(bishopPos, kingPos);
+
+            boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
+            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(bishopPos, kingPos)) == 2;
+
+            if (containsPiece && pinSetup)
+                mask |= pinRay;
+
+            diagonals &= diagonals - 1;
+        }
+
+        return mask;
     }
 
     public long getPieceBitboard(int piece) {

@@ -440,14 +440,14 @@ public class MoveLookups {
         int kingRank = kingPos / 8;
         int kingFile = kingPos % 8;
 
-        if (kingFile - bishopFile == kingRank - bishopRank) {
+        if (Math.abs(kingFile - bishopFile) == Math.abs(kingRank - bishopRank)) {
             int rank = kingRank;
             int file = kingFile;
 
             int rankDirection = (kingRank > bishopRank) ? -1 : 1;
             int fileDirection = (kingFile > bishopFile) ? -1 : 1;
 
-            while (rank != bishopRank && file != bishopFile) {
+            while (rank != bishopRank || file != bishopFile) {
                 mask |= (1L << (rank * 8 + file));
 
                 rank += rankDirection;
