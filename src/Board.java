@@ -1,273 +1,565 @@
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 
 public class Board {
-    int[] board;
-    int toMove;
+    HashMap<Integer, Long> pieceBitboards;
 
-    HashMap<Integer, ArrayList<Integer>> piecePositions;
+    boolean whiteQueenCastle, whiteKingCastle = true;
+    boolean blackQueenCastle, blackKingCastle = true;
 
     Move lastMove;
 
-    boolean blackKingCastle, blackQueenCastle, whiteKingCastle, whiteQueenCastle, blackCastle, whiteCastle;
+    Board lastBoard;
 
-    Board previousState;
+    public Board(Board b) {
+        if (b == null) return;
+        pieceBitboards = new HashMap<>(b.pieceBitboards);
+        whiteQueenCastle = b.whiteQueenCastle;
+        whiteKingCastle = b.whiteKingCastle;
+        blackQueenCastle = b.whiteQueenCastle;
+        blackKingCastle = b.whiteKingCastle;
+        lastMove = new Move(b.lastMove);
+        if (b.lastBoard != null)
+            lastBoard = new Board(b.lastBoard);
+    }
 
-    /**
-     * Sets up a new board based on an input FEN string
-     * @param fen A valid FEN string
-     */
     public Board(String fen) {
-        board = new int[64];
-        previousState = this;
-        toMove = 0;
+        pieceBitboards = new HashMap<>();
         lastMove = null;
-
-        piecePositions = new HashMap<>();
-
+        lastBoard = null;
         loadFen(fen);
     }
 
-    /**
-     * Copies all attributes of another board by value
-     * @param b Another board
-     */
-    public Board(Board b) {
-        board = Arrays.copyOf(b.board, b.board.length);
-        previousState = b.previousState;
-        toMove = b.toMove;
-        if (b.lastMove != null) lastMove = new Move(b.lastMove);
-        else lastMove = null;
-
-        blackKingCastle = b.blackKingCastle;
-        blackQueenCastle = b.blackQueenCastle;
-        whiteKingCastle = b.whiteKingCastle;
-        whiteQueenCastle = b.whiteQueenCastle;
-        blackCastle = b.blackCastle;
-        whiteCastle = b.whiteCastle;
-
-        piecePositions = Board.copyPiecePositionMap(b.piecePositions);
-    }
-
-    /**
-     * Loads a board layout from a FEN string into the bot.
-     * @param fen Valid FEN string
-     */
     public void loadFen(String fen) {
         HashMap<Character, Integer> fenMap = getFenMap();
 
         String[] ranks = fen.split(" ")[0].split("/");
-        int index = 0;
-        for (String rank : ranks) {
-            for (int i = 0; i < rank.length(); i++) {
-                char square = rank.charAt(i);
+        int rank = 7;
+        for (String rankPieces : ranks) {
+            int file = 0;
+            for (int i = 0; i < rankPieces.length(); i++) {
+                char square = rankPieces.charAt(i);
                 try { // Number offset
                     int offset = Integer.parseInt(square + "");
-                    index += offset;
+                    file += offset;
                 } catch (NumberFormatException e) { // Piece
                     int pieceType = fenMap.get(square);
-                    board[index] = pieceType;
+                    int index = rank * 8 + file;
 
-                    if (!piecePositions.containsKey(pieceType))
-                        piecePositions.put(pieceType, new ArrayList<Integer>());
+                    long oldBitboard = pieceBitboards.getOrDefault(pieceType, 0L);
+                    pieceBitboards.put(pieceType, oldBitboard | (1L << index));
+                    file ++;
+                }
+            }
+            rank--;
+        }
 
-                    piecePositions.get(pieceType).add(index);
+        if (fen.split(" ").length > 2) {
+            whiteKingCastle = (fen.split(" ")[2].indexOf('K') != -1);
+            whiteQueenCastle = (fen.split(" ")[2].indexOf('Q') != -1);
+            blackKingCastle = (fen.split(" ")[2].indexOf('k') != -1);
+            blackQueenCastle = (fen.split(" ")[2].indexOf('q') != -1);
+        }
+    }
 
-                    index += 1;
+    public void makeMove(Move m) {
+        lastBoard = new Board(this);
+
+        int color = Piece.color(m.piece);
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long newBitboard = getPieceBitboard(m.piece);
+        // Remove the old piece location
+        newBitboard &= ~(1L << m.startIndex);
+        // Add the new piece location
+        newBitboard |= (1L << m.endIndex);
+
+        pieceBitboards.put(m.piece, newBitboard);
+
+        // Remove the captured piece from its bitboard
+        if (m.isCapture) {
+            for (int piece : Piece.PIECE_VALUES) {
+                long newPieceBitboard = getPieceBitboard(piece | otherColor);
+                if (((newPieceBitboard >> m.endIndex) & 1) != 0) {
+                    newPieceBitboard &= ~(1L << m.endIndex);
+                    pieceBitboards.put((piece | otherColor), newPieceBitboard);
+                    break;
                 }
             }
         }
 
-        if (fen.split(" ").length > 2) {
-            String castling = fen.split(" ")[2];
-            if (castling.indexOf('K') != -1) {
-                whiteCastle = true;
-                whiteKingCastle = true;
-            }
-            if (castling.indexOf('Q') != -1) {
-                whiteCastle = true;
-                whiteQueenCastle = true;
-            }
-            if (castling.indexOf('K') == -1 && castling.indexOf('Q') == -1) {
-                whiteCastle = false;
-                whiteKingCastle = false;
-            }
-
-            if (castling.indexOf('k') != -1) {
-                blackCastle = true;
-                blackKingCastle = true;
-            }
-            if (castling.indexOf('q') != -1) {
-                blackCastle = true;
-                blackQueenCastle = true;
-            }
-            if (castling.indexOf('k') == -1 && castling.indexOf('q') == -1) {
-                blackCastle = false;
-                blackKingCastle = false;
-            }
+        // Remove the captured pawn from the bitboard
+        if (m.isPassant) {
+            int offset = (color == Piece.White) ? -8 : 8;
+            long newPawnBitboard = getPieceBitboard(Piece.Pawn | otherColor);
+            newPawnBitboard &= ~(1L << (m.endIndex + offset));
+            pieceBitboards.put((Piece.Pawn | otherColor), newPawnBitboard);
         }
 
-        if (fen.split(" ")[1].equals("w")) toMove = Piece.White;
-        else toMove = Piece.Black;
+        // Move the rook to its new spot
+        if (m.isCastle) {
+            long newRookBitboard = getPieceBitboard(Piece.Rook | color);
+            if (m.endIndex == 6) { // White Kingside Castle
+                newRookBitboard &= ~(1L << 7); // Remove rook
+                newRookBitboard |= (1L << 5); // Add back
+            }
+            else if (m.endIndex == 2) { // White Queenside Castle
+                newRookBitboard &= ~(1L);
+                newRookBitboard |= (1L << 3);
+            }
+            else if (m.endIndex == 62) { // Black Kingside Castle
+                newRookBitboard &= ~(1L << 63);
+                newRookBitboard |= (1L << 61);
+            }
+            else if (m.endIndex == 58) { // Black Queenside Castle
+                newRookBitboard &= ~(1L << 56);
+                newRookBitboard |= (1L << 59);
+            }
+            pieceBitboards.put((Piece.Rook | otherColor), newRookBitboard);
+        }
+
+        lastMove = m;
     }
 
-
-    /**
-     * Makes a specified move and updates the board's state
-     * @param move A legal move to be made
-     */
-    public void makeMove(Move move) {
-        previousState = new Board(this);
-
-        // Update castling requirements
-        if (move.piece == (Piece.Black | Piece.Rook) && move.startIndex == 0) blackQueenCastle = false;
-        if (move.piece == (Piece.Black | Piece.Rook) && move.startIndex == 7) blackKingCastle = false;
-        if (move.piece == (Piece.White | Piece.Rook) && move.startIndex == 56) whiteQueenCastle = false;
-        if (move.piece == (Piece.White | Piece.Rook) && move.startIndex == 63) whiteKingCastle = false;
-        if (move.piece == (Piece.White | Piece.King)) whiteCastle = false;
-        if (move.piece == (Piece.Black | Piece.King)) blackCastle = false;
-
-        // Update position table
-        getPos(move.piece).remove((Integer)move.startIndex);
-        getPos(move.piece).add(move.endIndex);
-
-        // If a piece is captured, we remove their position from the table
-        if (move.isCapture) {
-            int capturedPiece = board[move.endIndex];
-            getPos(capturedPiece).remove((Integer)move.endIndex);
-        }
-
-        if (move.promotion != 0) {
-            getPos(move.piece).remove((Integer)move.endIndex);
-            getPos(move.promotion).add(move.endIndex);
-        }
-
-        if (move.isPassant) {
-            if (toMove == Piece.White) {
-                getPos(board[move.endIndex + 8]).remove((Integer)(move.endIndex + 8));
-                board[move.endIndex + 8] = 0;
-            }
-            else {
-                getPos(board[move.endIndex - 8]).remove((Integer)(move.endIndex - 8));
-                board[move.endIndex - 8] = 0;
-            }
-        }
-        if (move.isCastle) {
-            if (toMove == Piece.White && move.endIndex == 62) { // White kingside castle
-                getPos(Piece.Rook | Piece.White).remove((Integer)63);
-                getPos(Piece.Rook | Piece.White).add(61);
-                board[63] = 0;
-                board[61] = Piece.Rook | Piece.White;
-            }
-            else if (toMove == Piece.White && move.endIndex == 58) { // White queenside castle
-                getPos(Piece.Rook | Piece.White).remove((Integer)56);
-                getPos(Piece.Rook | Piece.White).add(59);
-                board[56] = 0;
-                board[59] = Piece.Rook | Piece.White;
-            }
-            else if (toMove == Piece.Black && move.endIndex == 6) { // Black kingside castle
-                getPos(Piece.Rook | Piece.Black).remove((Integer)7);
-                getPos(Piece.Rook | Piece.Black).add(5);
-                board[7] = 0;
-                board[5] = Piece.Rook | Piece.Black;
-            }
-            else if (toMove == Piece.Black && move.endIndex == 2) { // Black queenside castle
-                getPos(Piece.Rook | Piece.Black).remove((Integer)0);
-                getPos(Piece.Rook | Piece.Black).add(3);
-                board[0] = 0;
-                board[3] = Piece.Rook | Piece.Black;
-            }
-        }
-
-        if (move.promotion != 0)
-            board[move.endIndex] = move.promotion;
-        else
-            board[move.endIndex] = move.piece;
-
-        board[move.startIndex] = 0;
-
-        if (toMove == Piece.White) toMove = Piece.Black;
-        else if (toMove == Piece.Black) toMove = Piece.White;
-
-        lastMove = move;
-    }
-
-    /**
-     * Unmakes the last made move, returning the board to its previous state
-     */
     public void unmakeMove() {
-        board = Arrays.copyOf(previousState.board, previousState.board.length);
-        toMove = previousState.toMove;
-        if (previousState.lastMove != null) lastMove = new Move(previousState.lastMove);
-        else lastMove = null;
-
-        blackKingCastle = previousState.blackKingCastle;
-        blackQueenCastle = previousState.blackQueenCastle;
-        whiteKingCastle = previousState.whiteKingCastle;
-        whiteQueenCastle = previousState.whiteQueenCastle;
-        whiteCastle = previousState.whiteCastle;
-        blackCastle = previousState.blackCastle;
-
-        piecePositions = Board.copyPiecePositionMap(previousState.piecePositions);
-
-        previousState = new Board(previousState.previousState);
+        this.pieceBitboards = new HashMap<>(lastBoard.pieceBitboards);
+        this.lastMove = new Move(lastBoard.lastMove);
+        this.whiteKingCastle =  lastBoard.whiteKingCastle;
+        this.whiteQueenCastle = lastBoard.whiteQueenCastle;
+        this.blackKingCastle = lastBoard.blackKingCastle;
+        this.blackQueenCastle = lastBoard.blackQueenCastle;
     }
 
+    public ArrayList<Move> getLegalMoves(int color) {
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+        ArrayList<Move> moves = new ArrayList<>();
 
-    /**
-     * Calculates the number of a given piece type
-     * @param pieceType A valid piece ID
-     * @return The number of the given piece's type
-     */
-    public int getCount(int pieceType) {
-        return piecePositions.getOrDefault(pieceType, new ArrayList<Integer>()).size();
-    }
+        int kingSq = Long.numberOfTrailingZeros(getPieceBitboard(Piece.King | color));
+        long checkers = getKingAttackers(color);
+        int numCheckers = Long.bitCount(checkers);
 
+        if (numCheckers <= 1) {
+            long blockMask = ~(0L);
+            int checkerSq = Long.numberOfTrailingZeros(checkers);
 
-    /**
-     * Finds the positions of any type of piece of a given color
-     * @param piece The target piece
-     * @return The position indices of the type of piece
-     */
-    public ArrayList<Integer> getPos(int piece) {
-        if (piecePositions.containsKey(piece)) return piecePositions.get(piece);
-        else {
-            ArrayList<Integer> pos = new ArrayList<>();
-            piecePositions.put(piece, pos);
-            return pos;
+            if (numCheckers == 1) {
+                if (isPiece(checkerSq, (Piece.Knight | otherColor)))
+                    blockMask = 1L << checkerSq;
+                else
+                    blockMask = Bitboard.squaresBetween(kingSq, checkerSq) | (1L << checkerSq);
+            }
+
+            moves.addAll(getRookMoves(color, blockMask));
+            moves.addAll(getBishopMoves(color, blockMask));
+            moves.addAll(getKnightMoves(color, blockMask));
+            moves.addAll(getQueenMoves(color, blockMask));
+            moves.addAll(getPawnMoves(color, blockMask));
+            moves.addAll(getKingMoves(color));
         }
+        else {
+            moves.addAll(getKingMoves(color));
+        }
+
+        return moves;
     }
 
-    public Bitboard getBitboard(int type) {
-        Bitboard positions = new Bitboard();
-        for (int pos : getPos(type)) positions.setSquare(pos, true);
-        return positions;
+    public ArrayList<Move> getRookMoves(int color, long blockMask) {
+        ArrayList<Move> moves = new ArrayList<>();
+
+        long occupancy = getOccupancy();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long rooks = getPieceBitboard(Piece.Rook | color);
+
+        while (rooks != 0) {
+            int from = Long.numberOfTrailingZeros(rooks);
+            rooks &= rooks - 1;
+
+            long attacks = MoveLookups.getRookMoves(from, occupancy);
+
+            long pinMask = getPinMask(color, from);
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
+
+            attacks &= ~getColorBitboard(color);
+            attacks &= blockMask;
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.Rook | color), capture, false, false));
+            }
+        }
+
+        return moves;
     }
 
-    /**
-     * Calculates the Manhattan distance between p1 and p2
-     * @param p1 Array index of square 1
-     * @param p2 Array index of square 2
-     * @return The Manhattan distance between p1 and p2
-     */
-    public static int getManhattanDistance(int p1, int p2) {
-        int rank1 = p1 / 8;
-        int rank2 = p2 / 8;
-        int file1 = p1 % 8;
-        int file2 = p2 % 8;
-        return Math.abs(rank1 - rank2) + Math.abs(file1 - file2);
+    public ArrayList<Move> getBishopMoves(int color, long blockMask) {
+        ArrayList<Move> moves = new ArrayList<>();
+        long occupancy = getOccupancy();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long bishops = getPieceBitboard(Piece.Bishop | color);
+        while (bishops != 0) {
+            int from = Long.numberOfTrailingZeros(bishops);
+            bishops &= bishops - 1;
+
+            long attacks = MoveLookups.getBishopMoves(from, occupancy);
+
+            long pinMask = getPinMask(color, from);
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
+
+            attacks &= ~getColorBitboard(color);
+            attacks &= blockMask;
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.Bishop | color), capture, false, false));
+            }
+        }
+
+        return moves;
     }
 
-    public static int getRank(int index) { return index / 8; }
-    public static int getFile(int index) { return index % 8; }
+    public ArrayList<Move> getKnightMoves(int color, long blockMask) {
+        ArrayList<Move> moves = new ArrayList<>();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
-    public static int toIndex(int rank, int file) { return (rank * 8) + file; }
+        long knights = getPieceBitboard(Piece.Knight | color);
+        while (knights != 0) {
+            int from = Long.numberOfTrailingZeros(knights);
+            knights &= knights - 1;
 
-    /**
-     * Returns a HashMap that maps FEN characters to piece IDs
-     * @return A HashMap that maps FEN characters to piece IDs
-     */
+            long attacks = MoveLookups.getKnightMoves(from);
+
+            long pinMask = getPinMask(color, from);
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
+
+            attacks &= ~getColorBitboard(color);
+            attacks &= blockMask;
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.Knight | color), capture, false, false));
+            }
+        }
+
+        return moves;
+    }
+
+    public ArrayList<Move> getQueenMoves(int color, long blockMask) {
+        ArrayList<Move> moves = new ArrayList<>();
+        long occupancy = getOccupancy();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long queens = getPieceBitboard(Piece.Queen | color);
+        while (queens != 0) {
+            int from = Long.numberOfTrailingZeros(queens);
+            queens &= queens - 1;
+
+            long attacks = MoveLookups.getQueenMoves(from, occupancy);
+
+            long pinMask = getPinMask(color, from);
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
+
+            attacks &= ~getColorBitboard(color);
+            attacks &= blockMask;
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.Queen | color), capture, false, false));
+            }
+        }
+
+        return moves;
+    }
+
+    public ArrayList<Move> getPawnMoves(int color, long blockMask) {
+        ArrayList<Move> moves = new ArrayList<>();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long pawns = getPieceBitboard(Piece.Pawn | color);
+        while (pawns != 0) {
+            int from = Long.numberOfTrailingZeros(pawns);
+            pawns &= pawns - 1;
+
+            // Attacks
+            long attacks = MoveLookups.getPawnAttacks(from, color);
+
+            long pinMask = getPinMask(color, from);
+            if ((pinMask & (1L << from)) != 0)
+                attacks &= pinMask;
+
+            attacks &= ~getColorBitboard(color);
+            attacks &= getColorBitboard(otherColor);
+            attacks &= blockMask;
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                int promotionRank = (color == Piece.White) ? 7 : 0;
+
+                if (to / 8 == promotionRank) {
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, (Piece.Queen | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, (Piece.Rook | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, (Piece.Knight | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, (Piece.Bishop | color)));
+                }
+                else
+                    moves.add(new Move(from, to, (Piece.Pawn | color), true, false, false));
+            }
+
+            // Push
+            long push = MoveLookups.getPawnMoves(from, color);
+
+            if ((pinMask & (1L << from)) != 0)
+                push &= pinMask;
+
+            push &= ~getColorBitboard(color);
+            push &= blockMask;
+
+            while (push != 0) {
+                int to = Long.numberOfTrailingZeros(push);
+                push &= push - 1;
+
+                int promotionRank = (color == Piece.White) ? 7 : 0;
+
+                if (to / 8 == promotionRank) {
+                    moves.add(new Move(from, to, (Piece.Pawn | color), false, (Piece.Queen | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), false, (Piece.Rook | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), false, (Piece.Knight | color)));
+                    moves.add(new Move(from, to, (Piece.Pawn | color), false, (Piece.Bishop | color)));
+                } else
+                    moves.add(new Move(from, to, (Piece.Pawn | color)));
+            }
+
+            // Double Pushers
+            int doublePushRank = (color == Piece.White) ? 1 : 6;
+            if (from / 8 == doublePushRank) {
+                int moveDirection = (color == Piece.White) ? 8 : -8;
+                long pushBlockerMask = ((1L << (from + moveDirection)) | (1L << (from + 2 * moveDirection)));
+                int to = from + 2 * moveDirection;
+
+                boolean isPinned = (pinMask != 0);
+                boolean legalCheckMove = (((1L << to) & blockMask) != 0);
+
+                if (!isPinned && legalCheckMove && (pushBlockerMask & getOccupancy()) == 0) {
+                    moves.add(new Move(from, to, (Piece.Pawn | color)));
+                }
+            }
+
+            // En Passant
+            int passantRank = (color == Piece.White) ? 4 : 3;
+            int passantMove = (color == Piece.White) ? 1 : -1;
+            boolean validLastMove = (Math.abs(lastMove.endIndex - lastMove.startIndex) == 16) && (lastMove.piece == (Piece.Pawn | otherColor));
+            boolean adjacentPawns = (lastMove.endIndex - from == 1);
+            if (validLastMove && adjacentPawns && (from / 8) == passantRank) {
+                int to = lastMove.endIndex + passantMove * 8;
+                moves.add(new Move(from, to, (Piece.Pawn | color), false, false, true));
+            }
+        }
+
+        return moves;
+    }
+
+    public ArrayList<Move> getKingMoves(int color) {
+        ArrayList<Move> moves = new ArrayList<>();
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long kings = getPieceBitboard(Piece.King | color);
+        while (kings != 0) {
+            int from = Long.numberOfTrailingZeros(kings);
+            kings &= kings - 1;
+
+            long attacks = MoveLookups.getKingMoves(from);
+
+            attacks &= ~getColorBitboard(color);
+
+            long presentKing = getPieceBitboard(Piece.King | color);
+            long removeKing = Bitboard.setSquare(pieceBitboards.get((Piece.King | color)), from, false);
+
+            pieceBitboards.put((Piece.King | color), removeKing);
+            attacks &= ~getAttackBitboard(otherColor);
+            pieceBitboards.put((Piece.King | color), presentKing);
+
+            while (attacks != 0) {
+                int to = Long.numberOfTrailingZeros(attacks);
+                attacks &= attacks - 1;
+
+                boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
+
+                moves.add(new Move(from, to, (Piece.King | color), capture, false, false));
+            }
+        }
+
+        // Castling
+        boolean kingsideCastle = (color == Piece.White) ? whiteKingCastle : blackKingCastle;
+        boolean queensideCastle = (color == Piece.White) ? whiteQueenCastle : blackQueenCastle;
+
+        int kingRookIndex = (color == Piece.White) ? 7 : 63;
+        int queenRookIndex = (color == Piece.White) ? 0 : 56;
+
+        kingsideCastle = kingsideCastle && (((1L << kingRookIndex) & getPieceBitboard(Piece.Rook | color)) != 0);
+        queensideCastle = queensideCastle && (((1L << queenRookIndex) & getPieceBitboard(Piece.Rook | color)) != 0);
+
+        long kingsideEmptyMask = (color == Piece.White) ? (0b11L << 5) : (0b11L << 61);
+        long queensideEmptyMask = (color == Piece.White) ? (0b111L << 1) : (0b11L << 57);
+
+        kingsideCastle = kingsideCastle && ((kingsideEmptyMask & getOccupancy()) == 0);
+        queensideCastle = queensideCastle && ((queensideEmptyMask & getOccupancy()) == 0);
+
+        int kingPos = (color == Piece.White) ? 4 : 60;
+
+        boolean inCheck = (((1L << kingPos) & getAttackBitboard(otherColor)) != 0);
+
+        if (kingsideCastle && !inCheck)
+            moves.add(new Move(kingPos, kingPos + 2, (Piece.King | color), false, true, false));
+        if (queensideCastle && !inCheck)
+            moves.add(new Move(kingPos, kingPos - 2, (Piece.King | color), false, true, false));
+
+        return moves;
+    }
+
+    public long getAttackBitboard(int color) {
+        long attacks = 0L;
+        long occupancy = getOccupancy();
+
+        long rooks = getPieceBitboard(Piece.Rook | color);
+        while (rooks != 0) {
+            int square = Long.numberOfTrailingZeros(rooks);
+            attacks |= MoveLookups.getRookMoves(square, occupancy);
+            rooks &= rooks - 1;
+        }
+
+        long bishops = getPieceBitboard(Piece.Bishop | color);
+        while (bishops != 0) {
+            int square = Long.numberOfTrailingZeros(bishops);
+            attacks |= MoveLookups.getBishopMoves(square, occupancy);
+            bishops &= bishops - 1;
+        }
+
+        long queens = getPieceBitboard(Piece.Queen | color);
+        while (queens != 0) {
+            int square = Long.numberOfTrailingZeros(queens);
+            attacks |= MoveLookups.getQueenMoves(square, occupancy);
+            queens &= queens - 1;
+        }
+
+        long knights = getPieceBitboard(Piece.Knight | color);
+        while (knights != 0) {
+            int square = Long.numberOfTrailingZeros(knights);
+            attacks |= MoveLookups.getKnightMoves(square);
+            knights &= knights - 1;
+        }
+
+        long pawns = getPieceBitboard(Piece.Pawn | color);
+        while (pawns != 0) {
+            int square = Long.numberOfTrailingZeros(pawns);
+            attacks |= MoveLookups.getPawnAttacks(square, color);
+            pawns &= pawns - 1;
+        }
+
+        return attacks;
+    }
+
+    public long getKingAttackers(int color) {
+        int kingSq = Long.numberOfTrailingZeros(getPieceBitboard(Piece.King | color));
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+        long occupancy = getOccupancy();
+
+        long rookAttackers = getPieceBitboard(Piece.Rook | otherColor) & MoveLookups.getRookMoves(kingSq, occupancy);
+        long bishopAttackers = getPieceBitboard(Piece.Bishop | otherColor) & MoveLookups.getBishopMoves(kingSq, occupancy);
+        long queenAttackers = getPieceBitboard(Piece.Queen | otherColor) & MoveLookups.getQueenMoves(kingSq, occupancy);
+        long knightAttackers = getPieceBitboard(Piece.Knight | otherColor) & MoveLookups.getKnightMoves(kingSq);
+        long pawnAttackers = getPieceBitboard(Piece.Pawn | otherColor) & MoveLookups.getPawnAttacksTo(kingSq, otherColor);
+
+        return rookAttackers | bishopAttackers | queenAttackers | knightAttackers | pawnAttackers;
+    }
+
+    public long getPinMask(int color, int piecePos) {
+        long mask = 0L;
+        int kingPos = Long.numberOfTrailingZeros(getPieceBitboard(Piece.King | color));
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long straights = getPieceBitboard(Piece.Rook | otherColor) | getPieceBitboard(Piece.Queen | otherColor);
+        while (straights != 0) {
+            int rookPos = Long.numberOfTrailingZeros(straights);
+
+            long pinRay = MoveLookups.computeRookPinRays(rookPos, kingPos);
+
+            boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
+            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(rookPos, kingPos)) == 2;
+
+            if (containsPiece && pinSetup)
+                mask |= pinRay;
+
+            straights &= straights - 1;
+        }
+
+        long diagonals = getPieceBitboard(Piece.Bishop | otherColor) | getPieceBitboard(Piece.Queen | otherColor);
+        while (diagonals != 0) {
+            int bishopPos = Long.numberOfTrailingZeros(diagonals);
+
+            long pinRay = MoveLookups.computeBishopPinRays(bishopPos, kingPos);
+
+            boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
+            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(bishopPos, kingPos)) == 2;
+
+            if (containsPiece && pinSetup)
+                mask |= pinRay;
+
+            diagonals &= diagonals - 1;
+        }
+
+        return mask;
+    }
+
+    public long getPieceBitboard(int piece) {
+        return pieceBitboards.getOrDefault(piece, 0L);
+    }
+
+    public boolean isPiece(int square, int piece) {
+        return (getPieceBitboard(piece) & (1L << square)) != 0;
+    }
+
+    public long getColorBitboard(int color) {
+        if (color == Piece.White)
+            return  getPieceBitboard(Piece.Pawn | Piece.White) |
+                    getPieceBitboard(Piece.Knight | Piece.White) |
+                    getPieceBitboard(Piece.Bishop | Piece.White) |
+                    getPieceBitboard(Piece.Rook | Piece.White) |
+                    getPieceBitboard(Piece.Queen | Piece.White) |
+                    getPieceBitboard(Piece.King | Piece.White);
+        else
+            return  getPieceBitboard(Piece.Pawn | Piece.Black) |
+                    getPieceBitboard(Piece.Knight | Piece.Black) |
+                    getPieceBitboard(Piece.Bishop | Piece.Black) |
+                    getPieceBitboard(Piece.Rook | Piece.Black) |
+                    getPieceBitboard(Piece.Queen | Piece.Black) |
+                    getPieceBitboard(Piece.King | Piece.Black);
+    }
+
+    public long getOccupancy() { return getColorBitboard(Piece.White) | getColorBitboard(Piece.Black); }
+
     private static HashMap<Character, Integer> getFenMap() {
         HashMap<Character, Integer> fenMap = new HashMap<>();
         fenMap.put('r', Piece.Rook | Piece.Black);
@@ -286,10 +578,6 @@ public class Board {
         return fenMap;
     }
 
-    /**
-     * Returns a HashMap that maps piece IDs to FEN characters
-     * @return A HashMap that maps piece IDs to FEN characters
-     */
     private static HashMap<Integer, Character> getInverseFenMap() {
         HashMap<Character, Integer> fenMap = getFenMap();
         HashMap<Integer, Character> inverse = new HashMap<>();
@@ -301,10 +589,6 @@ public class Board {
         return inverse;
     }
 
-    /**
-     * Returns a HashMap that maps piece IDs to Unicode characters
-     * @return A HashMap that maps piece IDs to Unicode characters
-     */
     public static HashMap<Integer, Character> getPieceCharMap() {
         HashMap<Integer, Character> inverseFenMap = new HashMap<>();
 
@@ -323,106 +607,5 @@ public class Board {
         inverseFenMap.put(Piece.Pawn   | Piece.White, '♙');
 
         return inverseFenMap;
-    }
-
-    /**
-     * Copies a piece position map by value
-     * @param original The map to be copied
-     * @return An identical piece position map
-     */
-    private static HashMap<Integer, ArrayList<Integer>> copyPiecePositionMap(HashMap<Integer, ArrayList<Integer>> original) {
-        HashMap<Integer, ArrayList<Integer>> copy = new HashMap<>();
-
-        for (HashMap.Entry<Integer, ArrayList<Integer>> entry : original.entrySet()) {
-            copy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-        }
-        return copy;
-    }
-
-    /**
-     * Prints the board in the console
-     */
-    public void print() {
-        HashMap<Integer, Character> inverseFen = getInverseFenMap();
-        System.out.print("  ┌───┬───┬───┬───┬───┬───┬───┬───┐\n8 │");
-        for (int i = 0; i < board.length; i++) {
-            if (board[i] == 0) { // Empty space
-                System.out.print("   ");
-            }
-            else {
-                System.out.print(" " + inverseFen.get(board[i]) + " ");
-            }
-            System.out.print("│");
-
-            if (i == 63) {
-                System.out.println();
-                System.out.println("  └───┴───┴───┴───┴───┴───┴───┴───┘");
-            }
-            else if ((i + 1) % 8 == 0) {
-                System.out.println();
-                System.out.println("  ├───┼───┼───┼───┼───┼───┼───┼───┤");
-                System.out.print((8 - ((i+1) / 8)) + " ");
-                System.out.print("│");
-            }
-        }
-        System.out.println("    a   b   c   d   e   f   g   h");
-
-        if (toMove == Piece.White) System.out.println("To Move: White");
-        else System.out.println("To Move: Black");
-    }
-
-    /**
-     * Prints the piece map
-     */
-    public void printPieceMap() {
-        for(HashMap.Entry<Integer, ArrayList<Integer>> e : piecePositions.entrySet()) {
-            System.out.print(getInverseFenMap().get(e.getKey()) + ": ");
-            System.out.print(e.getValue());
-            System.out.println();
-        }
-    }
-
-    /**
-     * Prints the board in the console with valid moves displayed
-     * @param moves A list of legal moves
-     */
-    public void printMoves(ArrayList<Move> moves) {
-        HashMap<Integer, Character> inverseFen = getInverseFenMap();
-        System.out.print("  ┌───┬───┬───┬───┬───┬───┬───┬───┐\n8 │");
-        for (int i = 0; i < board.length; i++) {
-            if (board[i] == 0) { // Empty space
-                boolean moveSquare = false;
-                for (Move m : moves) {
-                    if (m.endIndex == i) {
-                        moveSquare = true;
-                        System.out.print(" # ");
-                        break;
-                    }
-                }
-                if (!moveSquare) System.out.print("   ");
-            }
-            else {
-                System.out.print(" " + inverseFen.get(board[i]) + " ");
-            }
-            System.out.print("│");
-
-            if (i == 63) {
-                System.out.println();
-                System.out.println("  └───┴───┴───┴───┴───┴───┴───┴───┘");
-            }
-            else if ((i + 1) % 8 == 0) {
-                System.out.println();
-                System.out.println("  ├───┼───┼───┼───┼───┼───┼───┼───┤");
-                System.out.print((8 - ((i+1) / 8)) + " ");
-                System.out.print("│");
-            }
-        }
-        System.out.println("    a   b   c   d   e   f   g   h");
-
-        if (toMove == Piece.White) System.out.println("To Move: White");
-        else System.out.println("To Move: Black");
-
-        System.out.println("Possible moves: " + moves.size());
-        for (Move m : moves) System.out.println(m);
     }
 }

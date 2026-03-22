@@ -40,6 +40,7 @@ public class Move {
     }
 
     public Move(Move move) {
+        if(move == null) return;
         startIndex = move.startIndex;
         endIndex = move.endIndex;
         piece = move.piece;

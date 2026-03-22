@@ -1,16 +1,19 @@
 import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
-import java.util.Random;
 
 // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq
 
 public class DebugGraphics {
     public static void main(String[] args) {
         MoveLookups.initializeData();
-        GameBoard board = new GameBoard("8/8/2k5/8/8/8/q2P2K1/8 w - - 0 1");
+        Board board = new Board("8/1k2p3/8/3P4/8/5K2/8/8 w - - 0 1");
 
-        drawBoardMoves(board);
+        board.makeMove(new Move(52, 36, (Piece.Pawn | Piece.Black), false, false, false));
+        board.makeMove(new Move(35, 44, (Piece.Pawn | Piece.White), false, false, true));
+        board.unmakeMove();
+
+        drawBoardMoves(board, Piece.White);
     }
 
     public static Color evenTileColor = new Color(240,217,181);
@@ -20,18 +23,18 @@ public class DebugGraphics {
 
     static int tileSize = 90;
 
-    static void drawBoardMoves(GameBoard board) {
+    static void drawBoardMoves(Board board, int color) {
         JFrame frame = new JFrame();
 
         JButton[] squares = new JButton[64];
 
-        for (int value : Piece.PIECE_VALUES) {
+        for (int value : Piece.COLORED_PIECE_VALUES) {
             drawTiles(value, board, frame, squares);
         }
 
         drawEmptyTiles(~board.getOccupancy(), frame, squares);
 
-        displayMoves(board, squares);
+        displayMoves(board, squares, color);
 
         frame.setSize(735, 800);
 
@@ -39,7 +42,7 @@ public class DebugGraphics {
         frame.setVisible(true);
     }
 
-    static void drawTiles(int pieceIndex, GameBoard board, JFrame frame, JButton[] squares) {
+    static void drawTiles(int pieceIndex, Board board, JFrame frame, JButton[] squares) {
         long bitboard = board.getPieceBitboard(pieceIndex);
         while(bitboard != 0) {
             int posIndex = Long.numberOfTrailingZeros(bitboard);
@@ -92,8 +95,8 @@ public class DebugGraphics {
         return button;
     }
 
-    static void displayMoves(GameBoard board, JButton[] squares) {
-        ArrayList<Move> moves = board.getLegalMoves(Piece.White);
+    static void displayMoves(Board board, JButton[] squares, int color) {
+        ArrayList<Move> moves = board.getLegalMoves(color);
 
         System.out.println("Move Count: " + moves.size());
         for (Move m : moves) {
