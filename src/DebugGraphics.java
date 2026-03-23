@@ -6,14 +6,9 @@ import java.util.ArrayList;
 
 public class DebugGraphics {
     public static void main(String[] args) {
-        MoveLookups.initializeData();
-        Board board = new Board("8/1k2p3/8/3P4/8/5K2/8/8 w - - 0 1");
+        Board board = new Board("r1bqkbnr/pppp1ppp/2n5/4p3/1b1PP3/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 2 4");
 
-        board.makeMove(new Move(52, 36, (Piece.Pawn | Piece.Black), false, false, false));
-        board.makeMove(new Move(35, 44, (Piece.Pawn | Piece.White), false, false, true));
-        board.unmakeMove();
-
-        drawBoardMoves(board, Piece.White);
+        drawBoardMoves(board, board.toMove);
     }
 
     public static Color evenTileColor = new Color(240,217,181);

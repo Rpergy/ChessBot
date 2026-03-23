@@ -1,8 +1,11 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Objects;
 
 public class Board {
     HashMap<Integer, Long> pieceBitboards;
+
+    int toMove;
 
     boolean whiteQueenCastle, whiteKingCastle = true;
     boolean blackQueenCastle, blackKingCastle = true;
@@ -12,21 +15,24 @@ public class Board {
     Board lastBoard;
 
     public Board(Board b) {
-        if (b == null) return;
         pieceBitboards = new HashMap<>(b.pieceBitboards);
+        toMove = b.toMove;
         whiteQueenCastle = b.whiteQueenCastle;
         whiteKingCastle = b.whiteKingCastle;
         blackQueenCastle = b.whiteQueenCastle;
         blackKingCastle = b.whiteKingCastle;
-        lastMove = new Move(b.lastMove);
-        if (b.lastBoard != null)
-            lastBoard = new Board(b.lastBoard);
+
+        if (b.lastMove != null) lastMove = new Move(b.lastMove);
+        else lastMove = null;
+
+        lastBoard = b.lastBoard;
     }
 
     public Board(String fen) {
+        MoveLookups.initializeData();
         pieceBitboards = new HashMap<>();
         lastMove = null;
-        lastBoard = null;
+        lastBoard = this;
         loadFen(fen);
     }
 
@@ -60,6 +66,8 @@ public class Board {
             blackKingCastle = (fen.split(" ")[2].indexOf('k') != -1);
             blackQueenCastle = (fen.split(" ")[2].indexOf('q') != -1);
         }
+
+        toMove = (fen.split(" ")[1].equals("w")) ? Piece.White : Piece.Black;
     }
 
     public void makeMove(Move m) {
@@ -118,17 +126,27 @@ public class Board {
             pieceBitboards.put((Piece.Rook | otherColor), newRookBitboard);
         }
 
+        toMove = (toMove == Piece.White) ? Piece.Black : Piece.White;
         lastMove = m;
     }
 
     public void unmakeMove() {
         this.pieceBitboards = new HashMap<>(lastBoard.pieceBitboards);
-        this.lastMove = new Move(lastBoard.lastMove);
+
+        if (lastBoard.lastMove != null) this.lastMove = new Move(lastBoard.lastMove);
+        else this.lastMove = null;
+
         this.whiteKingCastle =  lastBoard.whiteKingCastle;
         this.whiteQueenCastle = lastBoard.whiteQueenCastle;
         this.blackKingCastle = lastBoard.blackKingCastle;
         this.blackQueenCastle = lastBoard.blackQueenCastle;
+
+        lastBoard = new Board(lastBoard.lastBoard);
+
+        toMove = lastBoard.toMove;
     }
+
+    public ArrayList<Move> getLegalMoves() { return getLegalMoves(toMove); }
 
     public ArrayList<Move> getLegalMoves(int color) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
@@ -334,7 +352,7 @@ public class Board {
             if ((pinMask & (1L << from)) != 0)
                 push &= pinMask;
 
-            push &= ~getColorBitboard(color);
+            push &= ~getOccupancy();
             push &= blockMask;
 
             while (push != 0) {
@@ -368,13 +386,15 @@ public class Board {
             }
 
             // En Passant
-            int passantRank = (color == Piece.White) ? 4 : 3;
-            int passantMove = (color == Piece.White) ? 1 : -1;
-            boolean validLastMove = (Math.abs(lastMove.endIndex - lastMove.startIndex) == 16) && (lastMove.piece == (Piece.Pawn | otherColor));
-            boolean adjacentPawns = (lastMove.endIndex - from == 1);
-            if (validLastMove && adjacentPawns && (from / 8) == passantRank) {
-                int to = lastMove.endIndex + passantMove * 8;
-                moves.add(new Move(from, to, (Piece.Pawn | color), false, false, true));
+            if (lastMove != null) {
+                int passantRank = (color == Piece.White) ? 4 : 3;
+                int passantMove = (color == Piece.White) ? 1 : -1;
+                boolean validLastMove = (Math.abs(lastMove.endIndex - lastMove.startIndex) == 16) && (lastMove.piece == (Piece.Pawn | otherColor));
+                boolean adjacentPawns = (lastMove.endIndex - from == 1);
+                if (validLastMove && adjacentPawns && (from / 8) == passantRank) {
+                    int to = lastMove.endIndex + passantMove * 8;
+                    moves.add(new Move(from, to, (Piece.Pawn | color), false, false, true));
+                }
             }
         }
 
@@ -502,12 +522,12 @@ public class Board {
 
         long straights = getPieceBitboard(Piece.Rook | otherColor) | getPieceBitboard(Piece.Queen | otherColor);
         while (straights != 0) {
-            int rookPos = Long.numberOfTrailingZeros(straights);
+            int pos = Long.numberOfTrailingZeros(straights);
 
-            long pinRay = MoveLookups.computeRookPinRays(rookPos, kingPos);
+            long pinRay = MoveLookups.computeRookPinRays(pos, kingPos);
 
             boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
-            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(rookPos, kingPos)) == 2;
+            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(pos, kingPos)) == 2;
 
             if (containsPiece && pinSetup)
                 mask |= pinRay;
@@ -517,12 +537,12 @@ public class Board {
 
         long diagonals = getPieceBitboard(Piece.Bishop | otherColor) | getPieceBitboard(Piece.Queen | otherColor);
         while (diagonals != 0) {
-            int bishopPos = Long.numberOfTrailingZeros(diagonals);
+            int pos = Long.numberOfTrailingZeros(diagonals);
 
-            long pinRay = MoveLookups.computeBishopPinRays(bishopPos, kingPos);
+            long pinRay = MoveLookups.computeBishopPinRays(pos, kingPos);
 
             boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
-            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(bishopPos, kingPos)) == 2;
+            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(pos, kingPos)) == 2;
 
             if (containsPiece && pinSetup)
                 mask |= pinRay;
@@ -576,17 +596,6 @@ public class Board {
         fenMap.put('K', Piece.King | Piece.White);
         fenMap.put('P', Piece.Pawn | Piece.White);
         return fenMap;
-    }
-
-    private static HashMap<Integer, Character> getInverseFenMap() {
-        HashMap<Character, Integer> fenMap = getFenMap();
-        HashMap<Integer, Character> inverse = new HashMap<>();
-
-        for (HashMap.Entry<Character, Integer> entry : fenMap.entrySet()) {
-            inverse.put(entry.getValue(), entry.getKey());
-        }
-
-        return inverse;
     }
 
     public static HashMap<Integer, Character> getPieceCharMap() {
