@@ -1,4 +1,4 @@
-public class Move {
+public class Move implements Comparable<Move> {
     int endIndex;
     int startIndex;
     int piece;
@@ -56,6 +56,16 @@ public class Move {
         return (m.startIndex == this.startIndex) && (m.endIndex == this.endIndex);
     }
 
+    public String formal() {
+        String[] files = {"a", "b", "c", "d", "e", "f", "g", "h"};
+        int startRank = (startIndex / 8) + 1;
+        String startFile = files[startIndex % 8];
+        int endRank = (endIndex / 8) + 1;
+        String endFile = files[endIndex % 8];
+
+        return startFile + startRank + endFile + endRank;
+    }
+
 
     public String toString() {
         char cap = (isCapture) ? 'C' : ' ';
@@ -75,5 +85,10 @@ public class Move {
         String endFile = files[endIndex % 8];
 
         return startFile + startRank + " " + endFile + endRank + " " + piece + cap + cas + prom + pas;
+    }
+
+    @Override
+    public int compareTo(Move other) {
+        return this.formal().compareTo(other.formal());
     }
 }

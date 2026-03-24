@@ -76,11 +76,24 @@ public class Board {
         int color = Piece.color(m.piece);
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
+        // Update castling requirements
+        if (m.piece == (Piece.Black | Piece.Rook) && m.startIndex == 56) blackQueenCastle = false;
+        if (m.piece == (Piece.Black | Piece.Rook) && m.startIndex == 63) blackKingCastle = false;
+        if (m.piece == (Piece.White | Piece.Rook) && m.startIndex == 0) whiteQueenCastle = false;
+        if (m.piece == (Piece.White | Piece.Rook) && m.startIndex == 7) whiteKingCastle = false;
+        if (m.piece == (Piece.White | Piece.King)) {
+            whiteKingCastle = false;
+            whiteQueenCastle = false;
+        }
+        if (m.piece == (Piece.Black | Piece.King)) {
+            blackKingCastle = false;
+            blackQueenCastle = false;
+        }
+
+        // Update moved piece
         long newBitboard = getPieceBitboard(m.piece);
-        // Remove the old piece location
-        newBitboard &= ~(1L << m.startIndex);
-        // Add the new piece location
-        newBitboard |= (1L << m.endIndex);
+        newBitboard &= ~(1L << m.startIndex); // Remove the old piece location
+        newBitboard |= (1L << m.endIndex); // Add the new piece location
 
         pieceBitboards.put(m.piece, newBitboard);
 
@@ -123,10 +136,11 @@ public class Board {
                 newRookBitboard &= ~(1L << 56);
                 newRookBitboard |= (1L << 59);
             }
-            pieceBitboards.put((Piece.Rook | otherColor), newRookBitboard);
+            pieceBitboards.put((Piece.Rook | color), newRookBitboard);
         }
 
         toMove = (toMove == Piece.White) ? Piece.Black : Piece.White;
+
         lastMove = m;
     }
 
@@ -141,9 +155,9 @@ public class Board {
         this.blackKingCastle = lastBoard.blackKingCastle;
         this.blackQueenCastle = lastBoard.blackQueenCastle;
 
-        lastBoard = new Board(lastBoard.lastBoard);
-
         toMove = lastBoard.toMove;
+
+        lastBoard = new Board(lastBoard.lastBoard);
     }
 
     public ArrayList<Move> getLegalMoves() { return getLegalMoves(toMove); }
@@ -378,9 +392,9 @@ public class Board {
                 int to = from + 2 * moveDirection;
 
                 boolean isPinned = (pinMask != 0);
-                boolean legalCheckMove = (((1L << to) & blockMask) != 0);
+                boolean legalMoveInCheck = (((1L << to) & blockMask) != 0);
 
-                if (!isPinned && legalCheckMove && (pushBlockerMask & getOccupancy()) == 0) {
+                if (!isPinned && legalMoveInCheck && (pushBlockerMask & getOccupancy()) == 0) {
                     moves.add(new Move(from, to, (Piece.Pawn | color)));
                 }
             }
@@ -513,6 +527,12 @@ public class Board {
         long pawnAttackers = getPieceBitboard(Piece.Pawn | otherColor) & MoveLookups.getPawnAttacksTo(kingSq, otherColor);
 
         return rookAttackers | bishopAttackers | queenAttackers | knightAttackers | pawnAttackers;
+    }
+
+    public boolean inCheck(int color) {
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+        int kingPos = Long.numberOfTrailingZeros(getPieceBitboard(Piece.King | color));
+        return (((1L << kingPos) & getAttackBitboard(otherColor)) != 0);
     }
 
     public long getPinMask(int color, int piecePos) {

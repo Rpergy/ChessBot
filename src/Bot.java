@@ -6,6 +6,29 @@ public class Bot {
         return moves.get((int)(Math.random() * moves.size()));
     }
 
+    private static int perftDivide(Board board, int depth, int startDepth) {
+        if (depth == 0) return 1;
+
+        ArrayList<Move> moves = board.getLegalMoves();
+        moves.sort(null);
+        int totalMoves = 0;
+        for (Move m : moves) {
+            board.makeMove(m);
+            int resultingMoves = perftDivide(board, depth - 1, startDepth);
+
+            if (depth == startDepth)
+                System.out.println(m.formal() + ": " + resultingMoves);
+
+            totalMoves += resultingMoves;
+            board.unmakeMove();
+        }
+        return totalMoves;
+    }
+
+    public static void perftDivide(Board board, int depth) {
+        System.out.println("Nodes searched: " + perftDivide(board, depth, depth));
+    }
+
     public static int perft(Board board, int depth) {
         if (depth == 0) return 1;
 
@@ -38,5 +61,20 @@ public class Bot {
             board.unmakeMove();
         }
         return totalCaptures;
+    }
+
+    public static int perftChecks(Board board, int depth) {
+        if (depth == 0) return 0;
+
+        ArrayList<Move> moves = board.getLegalMoves();
+
+        int totalChecks = 0;
+        for (Move m : moves) {
+            board.makeMove(m);
+            if (board.inCheck(board.toMove)) totalChecks++;
+            totalChecks += perftChecks(board, depth - 1);
+            board.unmakeMove();
+        }
+        return totalChecks;
     }
 }

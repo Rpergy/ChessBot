@@ -6,9 +6,9 @@ import java.util.ArrayList;
 
 public class DebugGraphics {
     public static void main(String[] args) {
-        Board board = new Board("r1bqkbnr/pppp1ppp/2n5/4p3/1b1PP3/2N2N2/PPP2PPP/R1BQKB1R w KQkq - 2 4");
+        Board board = new Board("rnbqkbnr/pppppppp/8/8/8/P7/1PPPPPPP/RNBQKBNR w KQkq - 0 1");
 
-        drawBoardMoves(board, board.toMove);
+        drawBoard(board);
     }
 
     public static Color evenTileColor = new Color(240,217,181);
@@ -18,26 +18,27 @@ public class DebugGraphics {
 
     static int tileSize = 90;
 
-    static void drawBoardMoves(Board board, int color) {
+    static void drawBoard(Board board) {
         JFrame frame = new JFrame();
 
         JButton[] squares = new JButton[64];
 
         for (int value : Piece.COLORED_PIECE_VALUES) {
-            drawTiles(value, board, frame, squares);
+            drawFilledTiles(value, board, frame, squares);
         }
 
         drawEmptyTiles(~board.getOccupancy(), frame, squares);
 
-        displayMoves(board, squares, color);
+        displayMoves(board, squares, board.toMove);
 
         frame.setSize(735, 800);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         frame.setLayout(null);
         frame.setVisible(true);
     }
 
-    static void drawTiles(int pieceIndex, Board board, JFrame frame, JButton[] squares) {
+    static void drawFilledTiles(int pieceIndex, Board board, JFrame frame, JButton[] squares) {
         long bitboard = board.getPieceBitboard(pieceIndex);
         while(bitboard != 0) {
             int posIndex = Long.numberOfTrailingZeros(bitboard);
