@@ -19,8 +19,8 @@ public class Board {
         toMove = b.toMove;
         whiteQueenCastle = b.whiteQueenCastle;
         whiteKingCastle = b.whiteKingCastle;
-        blackQueenCastle = b.whiteQueenCastle;
-        blackKingCastle = b.whiteKingCastle;
+        blackQueenCastle = b.blackQueenCastle;
+        blackKingCastle = b.blackKingCastle;
 
         if (b.lastMove != null) lastMove = new Move(b.lastMove);
         else lastMove = null;
@@ -181,11 +181,11 @@ public class Board {
                     blockMask = Bitboard.squaresBetween(kingSq, checkerSq) | (1L << checkerSq);
             }
 
-            moves.addAll(getRookMoves(color, blockMask));
-            moves.addAll(getBishopMoves(color, blockMask));
-            moves.addAll(getKnightMoves(color, blockMask));
-            moves.addAll(getQueenMoves(color, blockMask));
             moves.addAll(getPawnMoves(color, blockMask));
+            moves.addAll(getKnightMoves(color, blockMask));
+            moves.addAll(getBishopMoves(color, blockMask));
+            moves.addAll(getRookMoves(color, blockMask));
+            moves.addAll(getQueenMoves(color, blockMask));
             moves.addAll(getKingMoves(color));
         }
         else {
@@ -210,7 +210,7 @@ public class Board {
             long attacks = MoveLookups.getRookMoves(from, occupancy);
 
             long pinMask = getPinMask(color, from);
-            if ((pinMask & (1L << from)) != 0)
+            if (pinMask != 0)
                 attacks &= pinMask;
 
             attacks &= ~getColorBitboard(color);
@@ -242,7 +242,7 @@ public class Board {
             long attacks = MoveLookups.getBishopMoves(from, occupancy);
 
             long pinMask = getPinMask(color, from);
-            if ((pinMask & (1L << from)) != 0)
+            if (pinMask != 0)
                 attacks &= pinMask;
 
             attacks &= ~getColorBitboard(color);
@@ -273,7 +273,7 @@ public class Board {
             long attacks = MoveLookups.getKnightMoves(from);
 
             long pinMask = getPinMask(color, from);
-            if ((pinMask & (1L << from)) != 0)
+            if (pinMask != 0)
                 attacks &= pinMask;
 
             attacks &= ~getColorBitboard(color);
@@ -305,7 +305,7 @@ public class Board {
             long attacks = MoveLookups.getQueenMoves(from, occupancy);
 
             long pinMask = getPinMask(color, from);
-            if ((pinMask & (1L << from)) != 0)
+            if (pinMask != 0)
                 attacks &= pinMask;
 
             attacks &= ~getColorBitboard(color);
@@ -337,7 +337,7 @@ public class Board {
             long attacks = MoveLookups.getPawnAttacks(from, color);
 
             long pinMask = getPinMask(color, from);
-            if ((pinMask & (1L << from)) != 0)
+            if (pinMask != 0)
                 attacks &= pinMask;
 
             attacks &= ~getColorBitboard(color);
@@ -363,7 +363,7 @@ public class Board {
             // Push
             long push = MoveLookups.getPawnMoves(from, color);
 
-            if ((pinMask & (1L << from)) != 0)
+            if (pinMask != 0)
                 push &= pinMask;
 
             push &= ~getOccupancy();
@@ -392,9 +392,10 @@ public class Board {
                 int to = from + 2 * moveDirection;
 
                 boolean isPinned = (pinMask != 0);
+                boolean legalMoveInPin = (!isPinned) || (((1L << to) & pinMask) != 0);
                 boolean legalMoveInCheck = (((1L << to) & blockMask) != 0);
 
-                if (!isPinned && legalMoveInCheck && (pushBlockerMask & getOccupancy()) == 0) {
+                if (legalMoveInPin && legalMoveInCheck && (pushBlockerMask & getOccupancy()) == 0) {
                     moves.add(new Move(from, to, (Piece.Pawn | color)));
                 }
             }
@@ -547,7 +548,9 @@ public class Board {
             long pinRay = MoveLookups.computeRookPinRays(pos, kingPos);
 
             boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
-            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(pos, kingPos)) == 2;
+            // A piece is pinned to the king only if there are exactly 3 pieces in the mask
+            // (the king, the pinmaker, and the pinned piece)
+            boolean pinSetup = Long.bitCount(getOccupancy() & Bitboard.squaresBetween(pos, kingPos)) == 3;
 
             if (containsPiece && pinSetup)
                 mask |= pinRay;
@@ -562,7 +565,7 @@ public class Board {
             long pinRay = MoveLookups.computeBishopPinRays(pos, kingPos);
 
             boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
-            boolean pinSetup = Long.bitCount(getColorBitboard(color) & Bitboard.squaresBetween(pos, kingPos)) == 2;
+            boolean pinSetup = Long.bitCount(getOccupancy() & Bitboard.squaresBetween(pos, kingPos)) == 3;
 
             if (containsPiece && pinSetup)
                 mask |= pinRay;

@@ -10,7 +10,6 @@ public class Bot {
         if (depth == 0) return 1;
 
         ArrayList<Move> moves = board.getLegalMoves();
-        moves.sort(null);
         int totalMoves = 0;
         for (Move m : moves) {
             board.makeMove(m);
@@ -41,6 +40,11 @@ public class Bot {
         }
 
         return totalMoves;
+    }
+
+    public static void perftSuite(Board board, int depth) {
+        for (int i = 0; i <= depth; i++)
+            System.out.println("Depth " + i + ": " + perft(board, i));
     }
 
     public static int perftCaptures(Board board, int depth) {

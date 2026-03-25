@@ -111,11 +111,13 @@ public class MoveLookups {
         int rank = square / 8;
         int file = square % 8;
 
-        int direction = (color == Piece.White) ? 1 : -1;
-
-        if (rank < 7 && rank > 0) {
-            if (file > 0) attacks |= 1L << (square + direction * MoveConstants.pawnOffsets[0]);
-            if (file < 7) attacks |= 1L << (square + direction * MoveConstants.pawnOffsets[2]);
+        if (color == Piece.White) {
+            if (rank < 7 && file > 0) attacks |= (1L << square + 7);
+            if (rank < 7 && file < 7) attacks |= (1L << square + 9);
+        }
+        else if (color == Piece.Black) {
+            if (rank > 0 && file > 0) attacks |= (1L << square - 9);
+            if (rank > 0 && file < 7) attacks |= (1L << square - 7);
         }
 
         return attacks;

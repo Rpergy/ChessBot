@@ -13,6 +13,7 @@ public class Bitboard {
         int file1 = s1 % 8;
         int rank2 = s2 / 8;
         int file2 = s2 % 8;
+
         if (rank1 == rank2) { // Horizontal Movement
             int start = Math.min(file1, file2);
             int end = Math.max(file1, file2);
@@ -23,7 +24,7 @@ public class Bitboard {
             int end = Math.max(rank1, rank2);
             for (int i = start; i <= end; i++) mask |= 1L << (i * 8 + file1);
         }
-        else { // Diagonal Movement
+        else if (Math.abs(file1 - file2) == Math.abs(rank1 - rank2)) { // Diagonal Movement
             int rankStep = (rank2 > rank1) ? 1 : -1;
             int fileStep = (file2 > file1) ? 1 : -1;
 
