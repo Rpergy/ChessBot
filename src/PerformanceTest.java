@@ -1,6 +1,7 @@
 public class PerformanceTest {
     public static void main(String[] args) {
-        Board board = new Board("rnbqkbnr/p1pppppp/8/1p6/P7/8/1PPPPPPP/RNBQKBNR w KQkq - 0 1");
-        Bot.perftDivide(board, 3);
+        // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+        Board board = new Board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
+        Bot.perftSuite(board, 4);
     }
 }

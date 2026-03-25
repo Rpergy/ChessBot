@@ -42,8 +42,8 @@ public class Bot {
         return totalMoves;
     }
 
-    public static void perftSuite(Board board, int depth) {
-        for (int i = 0; i <= depth; i++)
+    public static void perftSuite(Board board, int maxDepth) {
+        for (int i = 0; i <= maxDepth; i++)
             System.out.println("Depth " + i + ": " + perft(board, i));
     }
 

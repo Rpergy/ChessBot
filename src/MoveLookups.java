@@ -11,6 +11,9 @@ public class MoveLookups {
     static long[][] bishopAttackTables = new long[64][];
     static int[] bishopShifts = new int[64];
 
+    static long[][] diagonalSquaresBetween = new long[64][64];
+    static long[][] straightSquaresBetween = new long[64][64];
+
     public static void initializeData() {
         for (int i = 0; i < 64; i++) {
             rookMasks[i] = getRookMask(i);
@@ -24,6 +27,11 @@ public class MoveLookups {
             int bishopRelevantBits = Long.bitCount(bishopMasks[i]);
             bishopShifts[i] = 64 - bishopRelevantBits;
             bishopAttackTables[i] = getBishopAttacks(i, bishopMasks[i], bishopMagicNumbers[i]);
+
+            for (int j = 0; j < 64; j++) {
+                diagonalSquaresBetween[i][j] = computeBishopPinRays(i, j);
+                straightSquaresBetween[i][j] = computeRookPinRays(i, j);
+            }
         }
     }
 
@@ -406,6 +414,21 @@ public class MoveLookups {
     }
 
     /* PINNED PIECES */
+    public static long getRookPinRays(int rookPos, int kingPos) {
+        return straightSquaresBetween[rookPos][kingPos];
+    }
+
+    public static long getBishopPinRays(int bishopPos, int kingPos) {
+        return diagonalSquaresBetween[bishopPos][kingPos];
+    }
+
+    public static long getSquaresBetween(int p1, int p2) {
+        if (straightSquaresBetween[p1][p2] == 0) return diagonalSquaresBetween[p1][p2];
+        if (diagonalSquaresBetween[p1][p2] == 0) return straightSquaresBetween[p1][p2];
+        return 0L;
+    }
+
+
     public static long computeRookPinRays(int rookPos, int kingPos) {
         long mask = 0L;
 

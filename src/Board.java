@@ -139,6 +139,18 @@ public class Board {
             pieceBitboards.put((Piece.Rook | color), newRookBitboard);
         }
 
+        if (m.promotion != 0) {
+            // Remove the pawn from the board
+            long newPawnBitboard = getPieceBitboard(m.piece);
+            newPawnBitboard &= ~(1L << m.endIndex);
+            pieceBitboards.put(m.piece, newPawnBitboard);
+
+            // Replace it with the promotion
+            long newPieceBitboard = getPieceBitboard(m.promotion);
+            newPieceBitboard |= (1L << m.endIndex);
+            pieceBitboards.put(m.promotion, newPieceBitboard);
+        }
+
         toMove = (toMove == Piece.White) ? Piece.Black : Piece.White;
 
         lastMove = m;
@@ -178,7 +190,7 @@ public class Board {
                 if (isPiece(checkerSq, (Piece.Knight | otherColor)))
                     blockMask = 1L << checkerSq;
                 else
-                    blockMask = Bitboard.squaresBetween(kingSq, checkerSq) | (1L << checkerSq);
+                    blockMask = MoveLookups.getSquaresBetween(kingSq, checkerSq) | (1L << checkerSq);
             }
 
             moves.addAll(getPawnMoves(color, blockMask));
@@ -405,7 +417,7 @@ public class Board {
                 int passantRank = (color == Piece.White) ? 4 : 3;
                 int passantMove = (color == Piece.White) ? 1 : -1;
                 boolean validLastMove = (Math.abs(lastMove.endIndex - lastMove.startIndex) == 16) && (lastMove.piece == (Piece.Pawn | otherColor));
-                boolean adjacentPawns = (lastMove.endIndex - from == 1);
+                boolean adjacentPawns = (Math.abs(lastMove.endIndex - from) == 1);
                 if (validLastMove && adjacentPawns && (from / 8) == passantRank) {
                     int to = lastMove.endIndex + passantMove * 8;
                     moves.add(new Move(from, to, (Piece.Pawn | color), false, false, true));
@@ -457,7 +469,7 @@ public class Board {
         queensideCastle = queensideCastle && (((1L << queenRookIndex) & getPieceBitboard(Piece.Rook | color)) != 0);
 
         long kingsideEmptyMask = (color == Piece.White) ? (0b11L << 5) : (0b11L << 61);
-        long queensideEmptyMask = (color == Piece.White) ? (0b111L << 1) : (0b11L << 57);
+        long queensideEmptyMask = (color == Piece.White) ? (0b111L << 1) : (0b111L << 57);
 
         kingsideCastle = kingsideCastle && ((kingsideEmptyMask & getOccupancy()) == 0);
         queensideCastle = queensideCastle && ((queensideEmptyMask & getOccupancy()) == 0);
@@ -466,9 +478,18 @@ public class Board {
 
         boolean inCheck = (((1L << kingPos) & getAttackBitboard(otherColor)) != 0);
 
-        if (kingsideCastle && !inCheck)
+        boolean kingsideMovingIntoCheck = (((1L << (kingPos + 2)) & getAttackBitboard(otherColor)) != 0);
+        boolean queensideMovingIntoCheck = (((1L << (kingPos - 2)) & getAttackBitboard(otherColor)) != 0);
+
+        long kingsideThroughMask = (color == Piece.White) ? (1L << 5) : (1L << 61);
+        long queensideThroughMask = (color == Piece.White) ? (1L << 3) : (1L << 59);
+
+        boolean enemyAttackingThroughKingside = ((getAttackBitboard(otherColor) & kingsideThroughMask) != 0);
+        boolean enemyAttackingThroughQueenside = ((getAttackBitboard(otherColor) & queensideThroughMask) != 0);
+
+        if (kingsideCastle && !inCheck && !kingsideMovingIntoCheck && !enemyAttackingThroughKingside)
             moves.add(new Move(kingPos, kingPos + 2, (Piece.King | color), false, true, false));
-        if (queensideCastle && !inCheck)
+        if (queensideCastle && !inCheck && !queensideMovingIntoCheck && !enemyAttackingThroughQueenside)
             moves.add(new Move(kingPos, kingPos - 2, (Piece.King | color), false, true, false));
 
         return moves;
@@ -513,6 +534,13 @@ public class Board {
             pawns &= pawns - 1;
         }
 
+        long king = getPieceBitboard(Piece.King | color);
+        while (king != 0) {
+            int square = Long.numberOfTrailingZeros(king);
+            attacks |= MoveLookups.getKingMoves(square);
+            king &= king - 1;
+        }
+
         return attacks;
     }
 
@@ -545,12 +573,12 @@ public class Board {
         while (straights != 0) {
             int pos = Long.numberOfTrailingZeros(straights);
 
-            long pinRay = MoveLookups.computeRookPinRays(pos, kingPos);
+            long pinRay = MoveLookups.getRookPinRays(pos, kingPos);
 
             boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
             // A piece is pinned to the king only if there are exactly 3 pieces in the mask
             // (the king, the pinmaker, and the pinned piece)
-            boolean pinSetup = Long.bitCount(getOccupancy() & Bitboard.squaresBetween(pos, kingPos)) == 3;
+            boolean pinSetup = Long.bitCount(getOccupancy() & pinRay) == 3;
 
             if (containsPiece && pinSetup)
                 mask |= pinRay;
@@ -562,10 +590,10 @@ public class Board {
         while (diagonals != 0) {
             int pos = Long.numberOfTrailingZeros(diagonals);
 
-            long pinRay = MoveLookups.computeBishopPinRays(pos, kingPos);
+            long pinRay = MoveLookups.getBishopPinRays(pos, kingPos);
 
             boolean containsPiece = (((1L << piecePos) & pinRay) != 0);
-            boolean pinSetup = Long.bitCount(getOccupancy() & Bitboard.squaresBetween(pos, kingPos)) == 3;
+            boolean pinSetup = Long.bitCount(getOccupancy() & pinRay) == 3;
 
             if (containsPiece && pinSetup)
                 mask |= pinRay;

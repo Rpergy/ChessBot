@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class DebugGraphics {
     public static void main(String[] args) {
-        Board board = new Board("rnbqkbnr/pppp1ppp/8/4p3/3P4/4B3/PPP1PPPP/RN1QKBNR b KQkq - 1 2");
+        Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq");
 
         drawBoard(board);
     }
