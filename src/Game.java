@@ -1,28 +1,32 @@
 import javax.swing.*;
 import java.awt.*;
-import java.util.ArrayList;
 
-// rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq
+public class Game {
+    public static JFrame frame;
+    public static JButton[] squares;
 
-public class DebugGraphics {
     public static void main(String[] args) {
         Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq");
 
-        drawBoard(board);
+        setupWindow(board);
+
+        for(int i = 0; i < 50; i++) {
+            Move bestMove = Bot.findBestMove(board, 4);
+            board.makeMove(bestMove);
+
+            drawBoard(board);
+        }
     }
 
-    static void drawBoard(Board board) {
-        JFrame frame = new JFrame();
-
-        JButton[] squares = new JButton[64];
+    static void setupWindow(Board board) {
+        frame = new JFrame();
+        squares = new JButton[64];
 
         for (int value : Piece.COLORED_PIECE_VALUES) {
-            drawFilledTiles(value, board, frame, squares);
+            setupFilledTiles(value, board);
         }
 
-        drawEmptyTiles(~board.getOccupancy(), frame, squares);
-
-        displayMoves(board, squares, board.toMove);
+        setupEmptyTiles(~board.getOccupancy());
 
         frame.setSize(GameConstants.windowWidth, GameConstants.windowHeight);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -31,9 +35,40 @@ public class DebugGraphics {
         frame.setVisible(true);
     }
 
-    static void drawFilledTiles(int pieceIndex, Board board, JFrame frame, JButton[] squares) {
+    static void drawBoard(Board board) {
+        for (int value : Piece.COLORED_PIECE_VALUES) {
+            drawFilledTiles(value, board);
+        }
+
+        drawEmptyTiles(~board.getOccupancy());
+    }
+
+    static void drawFilledTiles(int pieceIndex, Board board) {
         long bitboard = board.getPieceBitboard(pieceIndex);
-        while(bitboard != 0) {
+        while (bitboard != 0) {
+            int posIndex = Long.numberOfTrailingZeros(bitboard);
+            JButton tile = squares[posIndex];
+
+            tile.setText(Board.getPieceCharMap().get(pieceIndex) + "");
+
+            bitboard &= bitboard - 1;
+        }
+    }
+
+    static void drawEmptyTiles(long bitboard) {
+        while (bitboard != 0) {
+            int posIndex = Long.numberOfTrailingZeros(bitboard);
+            JButton tile = squares[posIndex];
+
+            tile.setText("");
+
+            bitboard &= bitboard - 1;
+        }
+    }
+
+    static void setupFilledTiles(int pieceIndex, Board board) {
+        long bitboard = board.getPieceBitboard(pieceIndex);
+        while (bitboard != 0) {
             int posIndex = Long.numberOfTrailingZeros(bitboard);
             int rank = posIndex / 8;
             int file = posIndex % 8;
@@ -44,10 +79,11 @@ public class DebugGraphics {
 
             frame.add(button);
             squares[posIndex] = button;
+
         }
     }
 
-    static void drawEmptyTiles(long bitboard, JFrame frame, JButton[] squares) {
+    static void setupEmptyTiles(long bitboard) {
         while(bitboard != 0) {
             int posIndex = Long.numberOfTrailingZeros(bitboard);
             int rank =  posIndex / 8;
@@ -82,35 +118,5 @@ public class DebugGraphics {
         button.setUI(new javax.swing.plaf.basic.BasicButtonUI());
         button.setBounds(GameConstants.tileSize * file, GameConstants.tileSize * rank, GameConstants.tileSize, GameConstants.tileSize);
         return button;
-    }
-
-    static void displayMoves(Board board, JButton[] squares, int color) {
-        ArrayList<Move> moves = board.getLegalMoves(color);
-
-        System.out.println("Move Count: " + moves.size());
-        for (Move m : moves) {
-            int rank = m.endIndex / 8;
-            int file = m.endIndex % 8;
-
-            Color moveTileColor = ((rank + file) % 2 == 0) ? GameConstants.moveOddTileColor : GameConstants.moveEvenTileColor;
-
-            squares[m.endIndex].setBackground(moveTileColor);
-
-            System.out.println(m);
-        }
-    }
-
-    static void displayBitboard(long board, JButton[] squares) {
-        while (board != 0) {
-            int currentSquare = Long.numberOfTrailingZeros(board);
-            int rank = currentSquare / 8;
-            int file = currentSquare % 8;
-
-            Color moveTileColor = ((rank + file) % 2 == 0) ? GameConstants.moveOddTileColor : GameConstants.moveEvenTileColor;
-
-            squares[currentSquare].setBackground(moveTileColor);
-
-            board &= board - 1;
-        }
     }
 }

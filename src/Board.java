@@ -1,6 +1,5 @@
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Objects;
 
 public class Board {
     HashMap<Integer, Long> pieceBitboards;
@@ -564,6 +563,10 @@ public class Board {
         return (((1L << kingPos) & getAttackBitboard(otherColor)) != 0);
     }
 
+    public boolean isPiece(int square, int piece) {
+        return (getPieceBitboard(piece) & (1L << square)) != 0;
+    }
+
     public long getPinMask(int color, int piecePos) {
         long mask = 0L;
         int kingPos = Long.numberOfTrailingZeros(getPieceBitboard(Piece.King | color));
@@ -608,8 +611,22 @@ public class Board {
         return pieceBitboards.getOrDefault(piece, 0L);
     }
 
-    public boolean isPiece(int square, int piece) {
-        return (getPieceBitboard(piece) & (1L << square)) != 0;
+    public int getCount(int piece) {
+        return Long.bitCount(getPieceBitboard(piece));
+    }
+
+    public int[] getPositions(int piece) {
+        long pieces = getPieceBitboard(piece);
+        int[] positions = new int[Long.bitCount(pieces)];
+
+        int index = 0;
+        while (pieces != 0) {
+            int position = Long.numberOfTrailingZeros(pieces);
+            positions[index] = position;
+            pieces &= pieces - 1;
+        }
+
+        return positions;
     }
 
     public long getColorBitboard(int color) {
