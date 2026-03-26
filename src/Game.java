@@ -12,32 +12,12 @@ public class Game {
 
     public static int playerColor = Piece.White;
 
+    public static int searchDepth = 4;
+
     public static void main(String[] args) {
         Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
         setupWindow(board);
-    }
-
-    static void setupWindow(Board board) {
-        frame = new JFrame();
-        squares = new JButton[64];
-        bl = new ButtonHandler(board, playerColor);
-
-        for (int value : Piece.COLORED_PIECE_VALUES) {
-            setupFilledTiles(value, board);
-        }
-
-        setupEmptyTiles(~board.getOccupancy());
-
-        status = new JLabel("");
-        status.setBounds(595, 730, 150, 25);
-        frame.add(status);
-
-        frame.setSize(GameConstants.windowWidth, GameConstants.windowHeight);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        frame.setLayout(null);
-        frame.setVisible(true);
     }
 
     static void drawBoard(Board board) {
@@ -118,7 +98,7 @@ public class Game {
     }
 
     static void makeBotMove(Board board) {
-        Move botMove = Bot.findBestMove(board, 4);
+        Move botMove = Bot.findBestMove(board, searchDepth);
         board.makeMove(botMove);
 
         handleEndgame(board);
@@ -136,6 +116,28 @@ public class Game {
         }
 
         return false;
+    }
+
+    static void setupWindow(Board board) {
+        frame = new JFrame();
+        squares = new JButton[64];
+        bl = new ButtonHandler(board, playerColor);
+
+        for (int value : Piece.COLORED_PIECE_VALUES) {
+            setupFilledTiles(value, board);
+        }
+
+        setupEmptyTiles(~board.getOccupancy());
+
+        status = new JLabel("");
+        status.setBounds(595, 730, 150, 25);
+        frame.add(status);
+
+        frame.setSize(GameConstants.windowWidth, GameConstants.windowHeight);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        frame.setLayout(null);
+        frame.setVisible(true);
     }
 
     static void setupFilledTiles(int pieceIndex, Board board) {

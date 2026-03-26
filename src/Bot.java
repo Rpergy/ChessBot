@@ -14,8 +14,10 @@ public class Bot {
         ArrayList<Move> moves = board.getLegalMoves();
         for (Move m : moves) {
             board.makeMove(m);
-            int score = -negamax(board, depth - 1, -beta, -alpha);
+            int score = negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove();
+
+//            System.out.println(m.formal() + ": " + score);
 
             if (score > max) {
                 max = score;
@@ -77,26 +79,39 @@ public class Bot {
 
         // Piece-Square Table - Providing bonuses for pieces to be on certain squares
         int pstScore = 0;
-        for (int pos : board.getPositions(Piece.Pawn | Piece.White)) pstScore += EvalConstants.pawnTable[pos];
-        for (int pos : board.getPositions(Piece.Bishop | Piece.White)) pstScore += EvalConstants.bishopTable[pos];
-        for (int pos : board.getPositions(Piece.Knight | Piece.White)) pstScore += EvalConstants.knightTable[pos];
-        for (int pos : board.getPositions(Piece.Rook | Piece.White)) pstScore += EvalConstants.rookTable[pos];
-        for (int pos : board.getPositions(Piece.Queen | Piece.White)) pstScore += EvalConstants.queenTable[pos];
-        for (int pos : board.getPositions(Piece.King | Piece.White)) pstScore += EvalConstants.kingTable[pos];
+        for (int pos : board.getPositions(Piece.Pawn | Piece.White))
+            pstScore += EvalConstants.pawnTable[pos ^ 56];
+        for (int pos : board.getPositions(Piece.Bishop | Piece.White))
+            pstScore += EvalConstants.bishopTable[pos ^ 56];
+        for (int pos : board.getPositions(Piece.Knight | Piece.White))
+            pstScore += EvalConstants.knightTable[pos ^ 56];
+        for (int pos : board.getPositions(Piece.Rook | Piece.White))
+            pstScore += EvalConstants.rookTable[pos ^ 56];
+        for (int pos : board.getPositions(Piece.Queen | Piece.White))
+            pstScore += EvalConstants.queenTable[pos ^ 56];
+        for (int pos : board.getPositions(Piece.King | Piece.White))
+            pstScore += EvalConstants.kingTable[pos ^ 56];
 
-        for (int pos : board.getPositions(Piece.Pawn | Piece.Black)) pstScore -= EvalConstants.pawnTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.Bishop | Piece.Black)) pstScore -= EvalConstants.bishopTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.Knight | Piece.Black)) pstScore -= EvalConstants.knightTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.Rook | Piece.Black)) pstScore -= EvalConstants.rookTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.Queen | Piece.Black)) pstScore -= EvalConstants.queenTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.King | Piece.Black)) pstScore -= EvalConstants.kingTable[pos ^ 56];
+        for (int pos : board.getPositions(Piece.Pawn | Piece.Black))
+            pstScore -= EvalConstants.pawnTable[pos];
+        for (int pos : board.getPositions(Piece.Bishop | Piece.Black))
+            pstScore -= EvalConstants.bishopTable[pos];
+        for (int pos : board.getPositions(Piece.Knight | Piece.Black))
+            pstScore -= EvalConstants.knightTable[pos];
+        for (int pos : board.getPositions(Piece.Rook | Piece.Black))
+            pstScore -= EvalConstants.rookTable[pos];
+        for (int pos : board.getPositions(Piece.Queen | Piece.Black))
+            pstScore -= EvalConstants.queenTable[pos];
+        for (int pos : board.getPositions(Piece.King | Piece.Black))
+            pstScore -= EvalConstants.kingTable[pos];
 
         eval += pstScore;
 
         // The negamax algorithm requires white and black moves to be of opposite signs
         int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
-        return relativeMultiplier * eval;
+        return eval;
     }
+
 
     public static void perftDivide(Board board, int depth) {
         System.out.println("Nodes searched: " + perftDivide(board, depth, depth));

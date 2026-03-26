@@ -12,7 +12,7 @@ public class EvalConstants {
     public static final int checkScore = Integer.MAX_VALUE;
 
     // Piece-Square Tables
-    // Note: These tables are for white. Black's evaluation must invert the table
+    // Note: These tables are from black's perspective (index 0 = rank 8). White's evaluation must invert the table
     public static int[] pawnTable = {
              0,  0,  0,  0,  0,  0,  0,  0,
             50, 50, 50, 50, 50, 50, 50, 50,

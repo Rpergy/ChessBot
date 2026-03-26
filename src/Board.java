@@ -166,7 +166,7 @@ public class Board {
         this.blackKingCastle = lastBoard.blackKingCastle;
         this.blackQueenCastle = lastBoard.blackQueenCastle;
 
-        toMove = lastBoard.toMove;
+        toMove = (toMove == Piece.White) ? Piece.Black : Piece.White;
 
         lastBoard = new Board(lastBoard.lastBoard);
     }
