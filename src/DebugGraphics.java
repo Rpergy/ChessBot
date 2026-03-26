@@ -67,7 +67,7 @@ public class DebugGraphics {
 
         rank = 7 - rank;
 
-        Color normalTileColor = ((rank + file) % 2 == 0) ? GameConstants.evenTileColor : GameConstants.oddTileColor;
+        Color normalTileColor = ((rank + file) % 2 == 0) ? GameConstants.evenTile : GameConstants.oddTile;
 
         button.setBackground(normalTileColor);
 
@@ -92,7 +92,7 @@ public class DebugGraphics {
             int rank = m.endIndex / 8;
             int file = m.endIndex % 8;
 
-            Color moveTileColor = ((rank + file) % 2 == 0) ? GameConstants.moveOddTileColor : GameConstants.moveEvenTileColor;
+            Color moveTileColor = ((rank + file) % 2 == 0) ? GameConstants.highlightOddTile : GameConstants.highlightEvenTile;
 
             squares[m.endIndex].setBackground(moveTileColor);
 
@@ -106,7 +106,7 @@ public class DebugGraphics {
             int rank = currentSquare / 8;
             int file = currentSquare % 8;
 
-            Color moveTileColor = ((rank + file) % 2 == 0) ? GameConstants.moveOddTileColor : GameConstants.moveEvenTileColor;
+            Color moveTileColor = ((rank + file) % 2 == 0) ? GameConstants.highlightOddTile : GameConstants.highlightEvenTile;
 
             squares[currentSquare].setBackground(moveTileColor);
 
