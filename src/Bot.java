@@ -15,7 +15,7 @@ public class Bot {
         for (Move m : moves) {
             board.makeMove(m);
             int score = negamax(board, depth - 1, -beta, -alpha);
-            board.unmakeMove();
+            board.unmakeMove(m);
 
 //            System.out.println(m.formal() + ": " + score);
 
@@ -44,7 +44,7 @@ public class Bot {
         for (Move m : moves) {
             board.makeMove(m);
             int score = -negamax(board, depth - 1, -beta, -alpha);
-            board.unmakeMove();
+            board.unmakeMove(m);
 
             if (score > max) {
                 max = score;
@@ -129,7 +129,7 @@ public class Bot {
                 System.out.println(m.formal() + ": " + resultingMoves);
 
             totalMoves += resultingMoves;
-            board.unmakeMove();
+            board.unmakeMove(m);
         }
         return totalMoves;
     }
@@ -146,9 +146,25 @@ public class Bot {
         for (Move m : moves) {
             board.makeMove(m);
             totalMoves += perft(board, depth - 1);
-            board.unmakeMove();
+            board.unmakeMove(m);
         }
 
         return totalMoves;
+    }
+
+    public static void averageSearchTime(Board board, int numSamples, int searchDepth) {
+        double totalSeconds = 0;
+
+        for (int sample = 1; sample <= numSamples; sample++) {
+            long startTime = System.nanoTime();
+            Bot.findBestMove(board, 4);
+            long endTime = System.nanoTime();
+
+            long durationMillis = (endTime - startTime) / 1_000_000;
+            System.out.println("Evaluation " + sample + ": " + (durationMillis / 1000.0) + "s");
+            totalSeconds += (durationMillis / 1000.0);
+        }
+
+        System.out.println("Average: " + (totalSeconds / numSamples) + "s ");
     }
 }

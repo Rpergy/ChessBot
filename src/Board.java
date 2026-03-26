@@ -1,6 +1,4 @@
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.*;
 
 public class Board {
     HashMap<Integer, Long> pieceBitboards;
@@ -8,36 +6,22 @@ public class Board {
 
     int toMove;
 
-    boolean whiteQueenCastle, whiteKingCastle = true;
-    boolean blackQueenCastle, blackKingCastle = true;
+    boolean whiteQueenCastle, whiteKingCastle;
+    boolean blackQueenCastle, blackKingCastle;
 
     Move lastMove;
 
-    Board lastBoard;
-
-    public Board(Board b) {
-        pieceBitboards = new HashMap<>(b.pieceBitboards);
-        squares = Arrays.copyOf(b.squares, b.squares.length);
-
-        toMove = b.toMove;
-        whiteQueenCastle = b.whiteQueenCastle;
-        whiteKingCastle = b.whiteKingCastle;
-        blackQueenCastle = b.blackQueenCastle;
-        blackKingCastle = b.blackKingCastle;
-
-        if (b.lastMove != null) lastMove = new Move(b.lastMove);
-        else lastMove = null;
-
-        lastBoard = b.lastBoard;
-    }
+    Deque<UnmakeInfo> boardInfo;
 
     public Board(String fen) {
         MoveLookups.initializeData();
         pieceBitboards = new HashMap<>();
         squares = new int[64];
         lastMove = null;
-        lastBoard = this;
+        boardInfo = new ArrayDeque<>();
         loadFen(fen);
+        UnmakeInfo currentBoardInfo = new UnmakeInfo(0, null, whiteQueenCastle, whiteKingCastle, blackQueenCastle, blackKingCastle);
+        boardInfo.addFirst(currentBoardInfo);
     }
 
     public void loadFen(String fen) {
@@ -76,7 +60,9 @@ public class Board {
     }
 
     public void makeMove(Move m) {
-        lastBoard = new Board(this);
+        // Save the current board's unrecoverable info before making any changes
+        UnmakeInfo currentBoardInfo = new UnmakeInfo(squares[m.endIndex], lastMove, whiteQueenCastle, whiteKingCastle, blackQueenCastle, blackKingCastle);
+        boardInfo.addFirst(currentBoardInfo);
 
         int color = Piece.color(m.piece);
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
@@ -176,21 +162,96 @@ public class Board {
         lastMove = m;
     }
 
-    public void unmakeMove() {
-        this.pieceBitboards = new HashMap<>(lastBoard.pieceBitboards);
-        this.squares = Arrays.copyOf(lastBoard.squares, lastBoard.squares.length);
+    public void unmakeMove(Move m) {
+        UnmakeInfo lastBoardInfo = boardInfo.removeFirst();
+        int color = Piece.color(m.piece);
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
-        if (lastBoard.lastMove != null) this.lastMove = new Move(lastBoard.lastMove);
-        else this.lastMove = null;
+        // Restore castling requirements
+        whiteQueenCastle = lastBoardInfo.whiteQueenCastle;
+        whiteKingCastle = lastBoardInfo.whiteKingCastle;
+        blackQueenCastle = lastBoardInfo.blackQueenCastle;
+        blackKingCastle = lastBoardInfo.blackKingCastle;
 
-        this.whiteKingCastle =  lastBoard.whiteKingCastle;
-        this.whiteQueenCastle = lastBoard.whiteQueenCastle;
-        this.blackKingCastle = lastBoard.blackKingCastle;
-        this.blackQueenCastle = lastBoard.blackQueenCastle;
+        // Restore moved piece
+        if (m.promotion == 0) {
+            long newBitboard = getPieceBitboard(m.piece);
+            // Remove the new piece location
+            newBitboard &= ~(1L << m.endIndex);
+            squares[m.endIndex] = 0;
+            // Add the old piece location
+            newBitboard |= (1L << m.startIndex);
+            squares[m.startIndex] = m.piece;
+
+            pieceBitboards.put(m.piece, newBitboard);
+        }
+        else {
+            long newPromotionBitboard = getPieceBitboard(m.promotion);
+            // Remove the promoted piece
+            newPromotionBitboard &= ~(1L << m.endIndex);
+            squares[m.endIndex] = 0;
+
+            // Add the old pawn location
+            long newBitboard = getPieceBitboard(m.piece);
+            newBitboard |= (1L << m.startIndex);
+            squares[m.startIndex] = m.piece;
+
+            pieceBitboards.put(m.piece, newBitboard);
+            pieceBitboards.put(m.promotion, newPromotionBitboard);
+        }
+
+        // Add the captured piece to its bitboard
+        if (m.isCapture) {
+            long newPieceBitboard = getPieceBitboard(lastBoardInfo.capturedPiece);
+            newPieceBitboard |= (1L << m.endIndex);
+            pieceBitboards.put(lastBoardInfo.capturedPiece, newPieceBitboard);
+            squares[m.endIndex] = lastBoardInfo.capturedPiece;
+        }
+
+        // Add the captured pawn to the bitboard
+        if (m.isPassant) {
+            int offset = (color == Piece.White) ? -8 : 8;
+            long newPawnBitboard = getPieceBitboard(Piece.Pawn | otherColor);
+            newPawnBitboard |= (1L << (m.endIndex + offset));
+            pieceBitboards.put((Piece.Pawn | otherColor), newPawnBitboard);
+            squares[m.endIndex + offset] = (Piece.Pawn | otherColor);
+        }
+
+        // Move the rook to its old spot
+        if (m.isCastle) {
+            long newRookBitboard = getPieceBitboard(Piece.Rook | color);
+            if (m.endIndex == 6) { // White Kingside Castle
+                // Remove rook
+                newRookBitboard &= ~(1L << 5);
+                squares[5] = 0;
+                // Add back
+                newRookBitboard |= (1L << 7);
+                squares[7] = (Piece.Rook | color);
+            }
+            else if (m.endIndex == 2) { // White Queenside Castle
+                newRookBitboard &= ~(1L << 3);
+                squares[3] = 0;
+                newRookBitboard |= (1L << 0);
+                squares[0] = (Piece.Rook | color);
+            }
+            else if (m.endIndex == 62) { // Black Kingside Castle
+                newRookBitboard &= ~(1L << 61);
+                squares[61] = 0;
+                newRookBitboard |= (1L << 63);
+                squares[63] = (Piece.Rook | color);
+            }
+            else if (m.endIndex == 58) { // Black Queenside Castle
+                newRookBitboard &= ~(1L << 59);
+                squares[59] = 0;
+                newRookBitboard |= (1L << 56);
+                squares[56] = (Piece.Rook | color);
+            }
+            pieceBitboards.put((Piece.Rook | color), newRookBitboard);
+        }
 
         toMove = (toMove == Piece.White) ? Piece.Black : Piece.White;
 
-        lastBoard = new Board(lastBoard.lastBoard);
+        lastMove = lastBoardInfo.lastMove;
     }
 
     public ArrayList<Move> getLegalMoves() { return getLegalMoves(toMove); }
@@ -708,5 +769,32 @@ public class Board {
         inverseFenMap.put(Piece.Pawn   | Piece.White, '♙');
 
         return inverseFenMap;
+    }
+}
+
+class UnmakeInfo {
+    public boolean whiteQueenCastle, whiteKingCastle;
+    public boolean blackQueenCastle, blackKingCastle;
+    public int capturedPiece;
+    public Move lastMove;
+
+    public UnmakeInfo(int capturedPiece, Move lastMove, boolean wq, boolean wk, boolean bq, boolean bk) {
+        this.capturedPiece = capturedPiece;
+        whiteQueenCastle = wq;
+        whiteKingCastle = wk;
+        blackQueenCastle = bq;
+        blackKingCastle = bk;
+        if (lastMove != null) this.lastMove = new Move(lastMove);
+        else this.lastMove = null;
+    }
+
+    public UnmakeInfo(UnmakeInfo copy) {
+        capturedPiece = copy.capturedPiece;
+        whiteQueenCastle = copy.whiteQueenCastle;
+        whiteKingCastle = copy.whiteKingCastle;
+        blackQueenCastle = copy.blackQueenCastle;
+        blackKingCastle = copy.blackKingCastle;
+        if (copy.lastMove != null) lastMove = new Move(copy.lastMove);
+        else lastMove = null;
     }
 }

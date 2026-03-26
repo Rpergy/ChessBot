@@ -4,18 +4,23 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 
-public class Game {
+public class PlayerGame {
     public static JFrame frame;
     public static JButton[] squares;
-    public static ButtonHandler bl;
+    public static MoveHandler mh;
+    public static UndoHandler uh;
     public static JLabel status;
+
+    public static JButton unmakeMove;
 
     public static int playerColor = Piece.White;
 
     public static int searchDepth = 4;
 
+    public static Move lastMove = null;
+
     public static void main(String[] args) {
-        Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 ");
+        Board board = new Board("4r3/5P2/8/8/8/2k5/6K1/8 w - - 0 1");
 
         setupWindow(board);
     }
@@ -86,18 +91,24 @@ public class Game {
 
     static Move handleMove(Board board, int startIndex, int endIndex) {
         ArrayList<Move> moves = board.getLegalMoves(playerColor);
+        Move playerMove = null;
         for (Move m : moves) {
             if (m.startIndex == startIndex && m.endIndex == endIndex) {
                 board.makeMove(m);
+                playerMove = m;
                 break;
             }
         }
+        playerColor = (playerColor == Piece.White) ? Piece.Black : Piece.White;
+        mh.playerColor = playerColor;
         boolean playerWin = handleEndgame(board);
 
-        if (!playerWin)
-            return makeBotMove(board);
-        else
-            return null;
+//        if (!playerWin)
+//            return makeBotMove(board);
+//        else
+//            return null;
+        lastMove = playerMove;
+        return playerMove;
     }
 
     static Move makeBotMove(Board board) {
@@ -131,7 +142,8 @@ public class Game {
     static void setupWindow(Board board) {
         frame = new JFrame();
         squares = new JButton[64];
-        bl = new ButtonHandler(board, playerColor);
+        mh = new MoveHandler(board, playerColor);
+        uh = new UndoHandler(board);
 
         for (int value : Piece.COLORED_PIECE_VALUES) {
             setupFilledTiles(value, board);
@@ -142,6 +154,11 @@ public class Game {
         status = new JLabel("");
         status.setBounds(595, 730, 150, 25);
         frame.add(status);
+
+        unmakeMove = new JButton("Undo");
+        unmakeMove.setBounds(0, 730, 150, 25);
+        unmakeMove.addActionListener(uh);
+        frame.add(unmakeMove);
 
         frame.setSize(GameConstants.windowWidth, GameConstants.windowHeight);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -193,7 +210,7 @@ public class Game {
         Font font = new Font("MS Gothic", Font.BOLD, 45);
         button.setFont(font);
 
-        button.addActionListener(bl);
+        button.addActionListener(mh);
 
         button.setBorderPainted(false);
         button.setBorder(null);
@@ -205,13 +222,13 @@ public class Game {
     }
 }
 
-class ButtonHandler implements ActionListener {
+class MoveHandler implements ActionListener {
     public int selectedIndex;
     public int moveIndex;
     public Board board;
     int playerColor;
 
-    public ButtonHandler(Board board, int playerColor) {
+    public MoveHandler(Board board, int playerColor) {
         selectedIndex = -1;
         moveIndex = -1;
         this.board = board;
@@ -222,7 +239,7 @@ class ButtonHandler implements ActionListener {
         int buttonIndex = -1;
         JButton pressedButton = (JButton)e.getSource();
         for (int i = 0; i < 64; i++) {
-            JButton button = Game.squares[i];
+            JButton button = PlayerGame.squares[i];
             if (pressedButton == button) {
                 buttonIndex = i;
                 break;
@@ -235,7 +252,7 @@ class ButtonHandler implements ActionListener {
         if (selectedIndex != -1) {
             updateMoveIndex(buttonIndex);
             if (moveIndex != -1) {
-                botMove = Game.handleMove(board, selectedIndex, moveIndex);
+                botMove = PlayerGame.handleMove(board, selectedIndex, moveIndex);
                 moved = true;
                 selectedIndex = -1;
             }
@@ -243,16 +260,16 @@ class ButtonHandler implements ActionListener {
 
         if (!moved) updateSelectedIndex(buttonIndex);
 
-        Game.drawBoard(board);
+        PlayerGame.drawBoard(board);
 
         if (selectedIndex != -1) {
-            Game.highlightBitboard((1L << selectedIndex));
-            Game.showMoves(board, selectedIndex);
+            PlayerGame.highlightBitboard((1L << selectedIndex));
+            PlayerGame.showMoves(board, selectedIndex);
         } else {
-            Game.highlightBitboard(0L);
+            PlayerGame.highlightBitboard(0L);
         }
 
-        if (botMove != null) Game.highlightBitboard((1L << botMove.startIndex) | (1L << botMove.endIndex));
+        if (botMove != null) PlayerGame.highlightBitboard((1L << botMove.startIndex) | (1L << botMove.endIndex));
     }
 
     public void updateSelectedIndex(int buttonIndex) {
@@ -276,5 +293,26 @@ class ButtonHandler implements ActionListener {
             moveIndex = buttonIndex;
         else
             moveIndex = -1;
+    }
+}
+
+class UndoHandler implements ActionListener {
+    public Board board;
+
+    public UndoHandler(Board board) {
+        this.board = board;
+    }
+
+    public void actionPerformed(ActionEvent e) {
+        if (PlayerGame.lastMove != null) {
+            System.out.println("Undoing last move");
+            board.unmakeMove(PlayerGame.lastMove);
+            PlayerGame.playerColor = (PlayerGame.playerColor == Piece.White) ? Piece.Black : Piece.White;
+            PlayerGame.mh.playerColor = PlayerGame.playerColor;
+            PlayerGame.lastMove = board.lastMove;
+        }
+
+        PlayerGame.drawBoard(board);
+        PlayerGame.highlightBitboard(0L);
     }
 }
