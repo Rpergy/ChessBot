@@ -15,7 +15,7 @@ public class Game {
     public static int searchDepth = 4;
 
     public static void main(String[] args) {
-        Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 ");
 
         setupWindow(board);
     }
@@ -84,7 +84,7 @@ public class Game {
         }
     }
 
-    static void handleMove(Board board, int startIndex, int endIndex) {
+    static Move handleMove(Board board, int startIndex, int endIndex) {
         ArrayList<Move> moves = board.getLegalMoves(playerColor);
         for (Move m : moves) {
             if (m.startIndex == startIndex && m.endIndex == endIndex) {
@@ -94,10 +94,13 @@ public class Game {
         }
         boolean playerWin = handleEndgame(board);
 
-        if (!playerWin) makeBotMove(board);
+        if (!playerWin)
+            return makeBotMove(board);
+        else
+            return null;
     }
 
-    static void makeBotMove(Board board) {
+    static Move makeBotMove(Board board) {
         long startTime = System.nanoTime();
         Move botMove = Bot.findBestMove(board, searchDepth);
         board.makeMove(botMove);
@@ -107,6 +110,8 @@ public class Game {
         System.out.println("Evaluation: " + (durationMillis / 1000.0) + "s");
 
         handleEndgame(board);
+
+        return botMove;
     }
 
     static boolean handleEndgame(Board board) {
@@ -224,12 +229,13 @@ class ButtonHandler implements ActionListener {
             }
         }
 
+        Move botMove = null;
         boolean moved = false;
 
         if (selectedIndex != -1) {
             updateMoveIndex(buttonIndex);
             if (moveIndex != -1) {
-                Game.handleMove(board, selectedIndex, moveIndex);
+                botMove = Game.handleMove(board, selectedIndex, moveIndex);
                 moved = true;
                 selectedIndex = -1;
             }
@@ -245,6 +251,8 @@ class ButtonHandler implements ActionListener {
         } else {
             Game.highlightBitboard(0L);
         }
+
+        if (botMove != null) Game.highlightBitboard((1L << botMove.startIndex) | (1L << botMove.endIndex));
     }
 
     public void updateSelectedIndex(int buttonIndex) {
