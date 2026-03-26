@@ -89,6 +89,16 @@ public class Move implements Comparable<Move> {
 
     @Override
     public int compareTo(Move other) {
-        return this.formal().compareTo(other.formal());
+        if (isCapture && !other.isCapture) return 1;
+        if (!isCapture && other.isCapture) return -1;
+        if (!isCapture && !other.isCapture) return 0;
+        if (isCapture && other.isCapture) {
+            // A move is high-value if it captures a piece with a low-value piece
+            if (Piece.type(piece) < Piece.type(other.piece)) return 1;
+            if (Piece.type(piece) > Piece.type(other.piece)) return -1;
+            if (Piece.type(piece) == Piece.type(other.piece)) return 0;
+        }
+
+        return 0;
     }
 }

@@ -12,6 +12,7 @@ public class Bot {
         Move maxMove = null;
 
         ArrayList<Move> moves = board.getLegalMoves();
+        moves.sort(null);
         for (Move m : moves) {
             board.makeMove(m);
             int score = negamax(board, depth - 1, -beta, -alpha);
@@ -36,6 +37,7 @@ public class Bot {
         int max = Integer.MIN_VALUE;
 
         ArrayList<Move> moves = board.getLegalMoves();
+        moves.sort(null);
         if (moves.isEmpty()) {
             if (board.inCheck(board.toMove)) return -EvalConstants.checkScore;
             else return 0;

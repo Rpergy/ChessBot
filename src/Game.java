@@ -98,8 +98,13 @@ public class Game {
     }
 
     static void makeBotMove(Board board) {
+        long startTime = System.nanoTime();
         Move botMove = Bot.findBestMove(board, searchDepth);
         board.makeMove(botMove);
+        long endTime = System.nanoTime();
+
+        long durationMillis = (endTime - startTime) / 1_000_000;
+        System.out.println("Evaluation: " + (durationMillis / 1000.0) + "s");
 
         handleEndgame(board);
     }

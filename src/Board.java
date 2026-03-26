@@ -1,8 +1,10 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 public class Board {
     HashMap<Integer, Long> pieceBitboards;
+    int[] squares;
 
     int toMove;
 
@@ -15,6 +17,8 @@ public class Board {
 
     public Board(Board b) {
         pieceBitboards = new HashMap<>(b.pieceBitboards);
+        squares = Arrays.copyOf(b.squares, b.squares.length);
+
         toMove = b.toMove;
         whiteQueenCastle = b.whiteQueenCastle;
         whiteKingCastle = b.whiteKingCastle;
@@ -30,6 +34,7 @@ public class Board {
     public Board(String fen) {
         MoveLookups.initializeData();
         pieceBitboards = new HashMap<>();
+        squares = new int[64];
         lastMove = null;
         lastBoard = this;
         loadFen(fen);
@@ -53,6 +58,7 @@ public class Board {
 
                     long oldBitboard = pieceBitboards.getOrDefault(pieceType, 0L);
                     pieceBitboards.put(pieceType, oldBitboard | (1L << index));
+                    squares[index] = pieceType;
                     file ++;
                 }
             }
@@ -89,23 +95,25 @@ public class Board {
             blackQueenCastle = false;
         }
 
+        // Must store the captured piece before making any changes to the squares array
+        int capturedPiece = squares[m.endIndex];
+
         // Update moved piece
         long newBitboard = getPieceBitboard(m.piece);
-        newBitboard &= ~(1L << m.startIndex); // Remove the old piece location
-        newBitboard |= (1L << m.endIndex); // Add the new piece location
+        // Remove the old piece location
+        newBitboard &= ~(1L << m.startIndex);
+        squares[m.startIndex] = 0;
+        // Add the new piece location
+        newBitboard |= (1L << m.endIndex);
+        squares[m.endIndex] = m.piece;
 
         pieceBitboards.put(m.piece, newBitboard);
 
         // Remove the captured piece from its bitboard
         if (m.isCapture) {
-            for (int piece : Piece.PIECE_VALUES) {
-                long newPieceBitboard = getPieceBitboard(piece | otherColor);
-                if (((newPieceBitboard >> m.endIndex) & 1) != 0) {
-                    newPieceBitboard &= ~(1L << m.endIndex);
-                    pieceBitboards.put((piece | otherColor), newPieceBitboard);
-                    break;
-                }
-            }
+            long newPieceBitboard = getPieceBitboard(capturedPiece);
+            newPieceBitboard &= ~(1L << m.endIndex);
+            pieceBitboards.put(capturedPiece, newPieceBitboard);
         }
 
         // Remove the captured pawn from the bitboard
@@ -114,26 +122,37 @@ public class Board {
             long newPawnBitboard = getPieceBitboard(Piece.Pawn | otherColor);
             newPawnBitboard &= ~(1L << (m.endIndex + offset));
             pieceBitboards.put((Piece.Pawn | otherColor), newPawnBitboard);
+            squares[m.endIndex + offset] = 0;
         }
 
         // Move the rook to its new spot
         if (m.isCastle) {
             long newRookBitboard = getPieceBitboard(Piece.Rook | color);
             if (m.endIndex == 6) { // White Kingside Castle
-                newRookBitboard &= ~(1L << 7); // Remove rook
-                newRookBitboard |= (1L << 5); // Add back
+                // Remove rook
+                newRookBitboard &= ~(1L << 7);
+                squares[7] = 0;
+                // Add back
+                newRookBitboard |= (1L << 5);
+                squares[5] = (Piece.Rook | color);
             }
             else if (m.endIndex == 2) { // White Queenside Castle
                 newRookBitboard &= ~(1L);
+                squares[0] = 0;
                 newRookBitboard |= (1L << 3);
+                squares[3] = (Piece.Rook | color);
             }
             else if (m.endIndex == 62) { // Black Kingside Castle
                 newRookBitboard &= ~(1L << 63);
+                squares[63] = 0;
                 newRookBitboard |= (1L << 61);
+                squares[61] = (Piece.Rook | color);
             }
             else if (m.endIndex == 58) { // Black Queenside Castle
                 newRookBitboard &= ~(1L << 56);
+                squares[56] = 0;
                 newRookBitboard |= (1L << 59);
+                squares[59] = (Piece.Rook | color);
             }
             pieceBitboards.put((Piece.Rook | color), newRookBitboard);
         }
@@ -143,11 +162,13 @@ public class Board {
             long newPawnBitboard = getPieceBitboard(m.piece);
             newPawnBitboard &= ~(1L << m.endIndex);
             pieceBitboards.put(m.piece, newPawnBitboard);
+            squares[m.endIndex] = 0;
 
             // Replace it with the promotion
             long newPieceBitboard = getPieceBitboard(m.promotion);
             newPieceBitboard |= (1L << m.endIndex);
             pieceBitboards.put(m.promotion, newPieceBitboard);
+            squares[m.endIndex] = m.promotion;
         }
 
         toMove = (toMove == Piece.White) ? Piece.Black : Piece.White;
@@ -157,6 +178,7 @@ public class Board {
 
     public void unmakeMove() {
         this.pieceBitboards = new HashMap<>(lastBoard.pieceBitboards);
+        this.squares = Arrays.copyOf(lastBoard.squares, lastBoard.squares.length);
 
         if (lastBoard.lastMove != null) this.lastMove = new Move(lastBoard.lastMove);
         else this.lastMove = null;
@@ -628,6 +650,8 @@ public class Board {
 
         return positions;
     }
+
+    public int getPieceAtPos(int pos) { return squares[pos]; }
 
     public long getColorBitboard(int color) {
         if (color == Piece.White)
