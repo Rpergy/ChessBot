@@ -2,6 +2,7 @@ public class Move implements Comparable<Move> {
     int endIndex;
     int startIndex;
     int piece;
+    int score;
 
     boolean isCapture;
     boolean isCastle;
@@ -17,6 +18,7 @@ public class Move implements Comparable<Move> {
         isCastle = false;
         isPassant = false;
         promotion = 0;
+        score = 0;
     }
 
     public Move(int start, int end, int piece, boolean capture, boolean castle, boolean passant) {
@@ -27,6 +29,7 @@ public class Move implements Comparable<Move> {
         isCastle = castle;
         isPassant = passant;
         promotion = 0;
+        score = 0;
     }
 
     public Move(int start, int end, int piece, boolean capture, int promotion) {
@@ -37,6 +40,7 @@ public class Move implements Comparable<Move> {
         isCastle = false;
         isPassant = false;
         this.promotion = promotion;
+        score = 0;
     }
 
     public Move(Move move) {
@@ -48,12 +52,12 @@ public class Move implements Comparable<Move> {
         isCastle = move.isCastle;
         isPassant = move.isPassant;
         promotion = move.promotion;
+        score = 0;
     }
 
-    public boolean Equals(Object o) {
-        if (o.getClass() != this.getClass()) return false;
-        Move m = (Move)o;
-        return (m.startIndex == this.startIndex) && (m.endIndex == this.endIndex);
+    public boolean equals(Object o) {
+        if (!(o instanceof Move m)) return false;
+        return this.startIndex == m.startIndex && this.endIndex == m.endIndex && this.promotion == m.promotion;
     }
 
     public String formal() {

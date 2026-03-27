@@ -231,7 +231,7 @@ public class Board {
             else if (m.endIndex == 2) { // White Queenside Castle
                 newRookBitboard &= ~(1L << 3);
                 squares[3] = 0;
-                newRookBitboard |= (1L << 0);
+                newRookBitboard |= (1L);
                 squares[0] = (Piece.Rook | color);
             }
             else if (m.endIndex == 62) { // Black Kingside Castle
@@ -275,23 +275,21 @@ public class Board {
                     blockMask = MoveLookups.getSquaresBetween(kingSq, checkerSq) | (1L << checkerSq);
             }
 
-            moves.addAll(getPawnMoves(color, blockMask));
-            moves.addAll(getKnightMoves(color, blockMask));
-            moves.addAll(getBishopMoves(color, blockMask));
-            moves.addAll(getRookMoves(color, blockMask));
-            moves.addAll(getQueenMoves(color, blockMask));
-            moves.addAll(getKingMoves(color));
+            getPawnMoves(color, blockMask, moves);
+            getKnightMoves(color, blockMask, moves);
+            getBishopMoves(color, blockMask, moves);
+            getRookMoves(color, blockMask, moves);
+            getQueenMoves(color, blockMask, moves);
+            getKingMoves(color, moves);
         }
         else {
-            moves.addAll(getKingMoves(color));
+            getKingMoves(color, moves);
         }
 
         return moves;
     }
 
-    public ArrayList<Move> getRookMoves(int color, long blockMask) {
-        ArrayList<Move> moves = new ArrayList<>();
-
+    public void getRookMoves(int color, long blockMask, ArrayList<Move> moves) {
         long occupancy = getOccupancy();
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
@@ -319,12 +317,9 @@ public class Board {
                 moves.add(new Move(from, to, (Piece.Rook | color), capture, false, false));
             }
         }
-
-        return moves;
     }
 
-    public ArrayList<Move> getBishopMoves(int color, long blockMask) {
-        ArrayList<Move> moves = new ArrayList<>();
+    public void getBishopMoves(int color, long blockMask, ArrayList<Move> moves) {
         long occupancy = getOccupancy();
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
@@ -351,12 +346,9 @@ public class Board {
                 moves.add(new Move(from, to, (Piece.Bishop | color), capture, false, false));
             }
         }
-
-        return moves;
     }
 
-    public ArrayList<Move> getKnightMoves(int color, long blockMask) {
-        ArrayList<Move> moves = new ArrayList<>();
+    public void getKnightMoves(int color, long blockMask, ArrayList<Move> moves) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
         long knights = getPieceBitboard(Piece.Knight | color);
@@ -382,12 +374,9 @@ public class Board {
                 moves.add(new Move(from, to, (Piece.Knight | color), capture, false, false));
             }
         }
-
-        return moves;
     }
 
-    public ArrayList<Move> getQueenMoves(int color, long blockMask) {
-        ArrayList<Move> moves = new ArrayList<>();
+    public void getQueenMoves(int color, long blockMask, ArrayList<Move> moves) {
         long occupancy = getOccupancy();
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
@@ -414,12 +403,9 @@ public class Board {
                 moves.add(new Move(from, to, (Piece.Queen | color), capture, false, false));
             }
         }
-
-        return moves;
     }
 
-    public ArrayList<Move> getPawnMoves(int color, long blockMask) {
-        ArrayList<Move> moves = new ArrayList<>();
+    public void getPawnMoves(int color, long blockMask, ArrayList<Move> moves) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
         long pawns = getPieceBitboard(Piece.Pawn | color);
@@ -506,12 +492,9 @@ public class Board {
                 }
             }
         }
-
-        return moves;
     }
 
-    public ArrayList<Move> getKingMoves(int color) {
-        ArrayList<Move> moves = new ArrayList<>();
+    public void getKingMoves(int color, ArrayList<Move> moves) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
         long kings = getPieceBitboard(Piece.King | color);
@@ -573,8 +556,6 @@ public class Board {
             moves.add(new Move(kingPos, kingPos + 2, (Piece.King | color), false, true, false));
         if (queensideCastle && !inCheck && !queensideMovingIntoCheck && !enemyAttackingThroughQueenside)
             moves.add(new Move(kingPos, kingPos - 2, (Piece.King | color), false, true, false));
-
-        return moves;
     }
 
     public long getAttackBitboard(int color) {

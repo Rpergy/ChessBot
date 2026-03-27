@@ -41,4 +41,10 @@ public class Piece {
         int color = 0b11000 & piece;
         return color == targetColor;
     }
+
+    public static int asIndex(int piece) {
+        int type = Piece.type(piece) - 1;
+        int color = (Piece.color(piece) == Piece.White) ? 0 : 6;
+        return type + color;
+    }
 }

@@ -1,6 +1,13 @@
 import java.util.ArrayList;
+import java.util.Collections;
 
 public class Bot {
+    static final int MAX_DEPTH = 10;
+
+    static int[][] historyTable = new int[12][64];
+
+    static Move[][] killerMoves = new Move[MAX_DEPTH][2];
+
     public static Move findBestMove(Board board, int searchDepth) {
         return rootNegamax(board, searchDepth, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
@@ -12,19 +19,27 @@ public class Bot {
         Move maxMove = null;
 
         ArrayList<Move> moves = board.getLegalMoves();
-        for (Move m : moves) {
+        scoreMoves(board, moves, depth);
+
+        for (int i = 0; i < moves.size(); i++) {
+            Move m = pickBest(moves, i);
+
             board.makeMove(m);
             int score = negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove(m);
-
-//            System.out.println(m.formal() + ": " + score);
 
             if (score > max) {
                 max = score;
                 maxMove = m;
                 if (score > alpha) alpha = score;
             }
-            if (score >= beta) return maxMove;
+            if (score >= beta) {
+                if (!m.isCapture) {
+                    storeKiller(m, depth);
+                    historyTable[Piece.asIndex(m.piece)][m.endIndex] += depth * depth; // bonus
+                }
+                return maxMove;
+            }
         }
 
         return maxMove;
@@ -36,12 +51,17 @@ public class Bot {
         int max = Integer.MIN_VALUE;
 
         ArrayList<Move> moves = board.getLegalMoves();
+        scoreMoves(board, moves, depth);
+
         if (moves.isEmpty()) {
             if (board.inCheck(board.toMove)) return -EvalConstants.checkScore;
             else return 0;
         }
 
-        for (Move m : moves) {
+        for (int i = 0; i < moves.size(); i++) {
+            Move m = pickBest(moves, i);
+//            Move m = moves.get(i);
+
             board.makeMove(m);
             int score = -negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove(m);
@@ -50,7 +70,13 @@ public class Bot {
                 max = score;
                 if (score > alpha) alpha = score;
             }
-            if (score >= beta) return max;
+            if (score >= beta) {
+                if (!m.isCapture) {
+                    storeKiller(m, depth);
+                    historyTable[Piece.asIndex(m.piece)][m.endIndex] += depth * depth; // bonus
+                }
+                return max;
+            }
         }
 
         return max;
@@ -112,6 +138,65 @@ public class Bot {
         return eval;
     }
 
+    public static void scoreMoves(Board board, ArrayList<Move> moves, int ply) {
+        for (Move move : moves) {
+            move.score = 0;
+            if (move.isCapture) {
+                int victim = board.squares[move.endIndex];
+                int victimScore = 0;
+                if (Piece.type(victim) == Piece.Pawn) victimScore = EvalConstants.pawnScore;
+                if (Piece.type(victim) == Piece.Bishop) victimScore = EvalConstants.bishopScore;
+                if (Piece.type(victim) == Piece.Knight) victimScore = EvalConstants.knightScore;
+                if (Piece.type(victim) == Piece.Rook) victimScore = EvalConstants.rookScore;
+                if (Piece.type(victim) == Piece.Queen) victimScore = EvalConstants.queenScore;
+                if (Piece.type(victim) == Piece.King) victimScore = EvalConstants.kingScore;
+
+                int attacker = move.piece;
+                int attackerScore = 0;
+                if (Piece.type(attacker) == Piece.Pawn) attackerScore = EvalConstants.pawnScore;
+                if (Piece.type(attacker) == Piece.Bishop) attackerScore = EvalConstants.bishopScore;
+                if (Piece.type(attacker) == Piece.Knight) attackerScore = EvalConstants.knightScore;
+                if (Piece.type(attacker) == Piece.Rook) attackerScore = EvalConstants.rookScore;
+                if (Piece.type(attacker) == Piece.Queen) attackerScore = EvalConstants.queenScore;
+                if (Piece.type(attacker) == Piece.King) attackerScore = EvalConstants.kingScore;
+
+                move.score = 1000000 + (victimScore * 10 - attackerScore);
+            }
+            else if (isKiller(move, ply)) {
+                move.score = 900000;
+            }
+            else {
+                move.score = historyTable[Piece.asIndex(move.piece)][move.endIndex];
+            }
+        }
+    }
+
+    public static Move pickBest(ArrayList<Move> moves, int startIndex) {
+        int bestScore = Integer.MIN_VALUE;
+        int bestIndex = startIndex;
+
+        for (int i = startIndex; i < moves.size(); i++) {
+            if (moves.get(i).score > bestScore) {
+                bestScore = moves.get(i).score;
+                bestIndex = i;
+            }
+        }
+
+        Collections.swap(moves, startIndex, bestIndex);
+        return moves.get(startIndex);
+    }
+
+    static boolean isKiller(Move move, int ply) {
+        return move.equals(killerMoves[ply-1][0]) || move.equals(killerMoves[ply-1][1]);
+    }
+
+    static void storeKiller(Move move, int ply) {
+        if (!move.isCapture) {
+            killerMoves[ply-1][1] = killerMoves[ply-1][0];
+            killerMoves[ply-1][0] = move;
+        }
+    }
+
 
     public static void perftDivide(Board board, int depth) {
         System.out.println("Nodes searched: " + perftDivide(board, depth, depth));
@@ -154,17 +239,28 @@ public class Bot {
 
     public static void averageSearchTime(Board board, int numSamples, int searchDepth) {
         double totalSeconds = 0;
+        double[] times = new double[numSamples];
 
-        for (int sample = 1; sample <= numSamples; sample++) {
+        for (int sample = 0; sample < numSamples; sample++) {
             long startTime = System.nanoTime();
-            Bot.findBestMove(board, 4);
+            Bot.findBestMove(board, searchDepth);
             long endTime = System.nanoTime();
 
             long durationMillis = (endTime - startTime) / 1_000_000;
             System.out.println("Evaluation " + sample + ": " + (durationMillis / 1000.0) + "s");
             totalSeconds += (durationMillis / 1000.0);
+            times[sample] = (durationMillis / 1000.0);
         }
+        double average = (totalSeconds / numSamples);
 
-        System.out.println("Average: " + (totalSeconds / numSamples) + "s ");
+
+        double sdSum = 0;
+        for (double time : times) {
+            sdSum += (time - average) * (time - average);
+        }
+        double sd = Math.sqrt(sdSum / (numSamples - 1));
+
+        System.out.println("Mean: " + (totalSeconds / numSamples) + "s ");
+        System.out.println("Standard Deviation: " + sd + "s ");
     }
 }
