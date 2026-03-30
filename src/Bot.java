@@ -2,13 +2,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 public class Bot {
-    static final int MAX_DEPTH = 10;
+    static int MAX_DEPTH = 5;
 
-    static int[][] historyTable = new int[12][64];
+    static int[][][] historyTable = new int[2][64][64];
+    static int maxHistoryScore = 16384;
 
     static Move[][] killerMoves = new Move[MAX_DEPTH][2];
 
+    static int nodesSearched = 0;
+
     public static Move findBestMove(Board board, int searchDepth) {
+        MAX_DEPTH = searchDepth;
         return rootNegamax(board, searchDepth, Integer.MIN_VALUE, Integer.MAX_VALUE);
     }
 
@@ -22,7 +26,7 @@ public class Bot {
         scoreMoves(board, moves, depth);
 
         for (int i = 0; i < moves.size(); i++) {
-            Move m = pickBest(moves, i);
+            Move m = pickBestMove(moves, i);
 
             board.makeMove(m);
             int score = negamax(board, depth - 1, -beta, -alpha);
@@ -36,7 +40,7 @@ public class Bot {
             if (score >= beta) {
                 if (!m.isCapture) {
                     storeKiller(m, depth);
-                    historyTable[Piece.asIndex(m.piece)][m.endIndex] += depth * depth; // bonus
+                    updateHistoryTable(Piece.color(m.piece), m.startIndex, m.endIndex, depth * depth);
                 }
                 return maxMove;
             }
@@ -46,7 +50,10 @@ public class Bot {
     }
 
     private static int negamax(Board board, int depth, int alpha, int beta) {
-        if (depth == 0) return evaluateBoard(board);
+        nodesSearched++;
+        if (depth == 0) {
+            return evaluateBoard(board);
+        }
 
         int max = Integer.MIN_VALUE;
 
@@ -59,8 +66,7 @@ public class Bot {
         }
 
         for (int i = 0; i < moves.size(); i++) {
-            Move m = pickBest(moves, i);
-//            Move m = moves.get(i);
+            Move m = pickBestMove(moves, i);
 
             board.makeMove(m);
             int score = -negamax(board, depth - 1, -beta, -alpha);
@@ -73,7 +79,7 @@ public class Bot {
             if (score >= beta) {
                 if (!m.isCapture) {
                     storeKiller(m, depth);
-                    historyTable[Piece.asIndex(m.piece)][m.endIndex] += depth * depth; // bonus
+                    updateHistoryTable(Piece.color(m.piece), m.startIndex, m.endIndex, depth * depth);
                 }
                 return max;
             }
@@ -81,6 +87,72 @@ public class Bot {
 
         return max;
     }
+
+    public static void scoreMoves(Board board, ArrayList<Move> moves, int depth) {
+        int ply = MAX_DEPTH - depth;
+        for (Move move : moves) {
+            move.score = 0;
+            if (move.isCapture) {
+                int victim = board.squares[move.endIndex];
+                int victimScore = getPieceScore(victim);
+
+                int attacker = move.piece;
+                int attackerScore = getPieceScore(attacker);
+
+                move.score = 1000000 + (victimScore * 10 - attackerScore);
+            }
+            else if (move.equals(killerMoves[ply][0]))
+                move.score = 900000;
+            else if (move.equals(killerMoves[ply][1]))
+                move.score = 800000;
+            else {
+                int colorIndex = (Piece.color(move.piece) == Piece.White) ? 0 : 1;
+                move.score = historyTable[colorIndex][move.startIndex][move.endIndex];
+            }
+        }
+    }
+
+    public static Move pickBestMove(ArrayList<Move> moves, int startIndex) {
+        int bestScore = Integer.MIN_VALUE;
+        int bestIndex = startIndex;
+
+        for (int i = startIndex; i < moves.size(); i++) {
+            if (moves.get(i).score > bestScore) {
+                bestScore = moves.get(i).score;
+                bestIndex = i;
+            }
+        }
+
+        Collections.swap(moves, startIndex, bestIndex);
+        return moves.get(startIndex);
+    }
+
+    static void storeKiller(Move move, int depth) {
+        int ply = MAX_DEPTH - depth;
+        if (!move.isCapture) {
+            killerMoves[ply][1] = killerMoves[ply][0];
+            killerMoves[ply][0] = move;
+        }
+    }
+
+    static void updateHistoryTable(int color, int from, int to, int bonus) {
+        int colorIndex = (color == Piece.White) ? 0 : 1;
+        int clampedBonus = Math.clamp(bonus, -maxHistoryScore, maxHistoryScore);
+        historyTable[colorIndex][from][to] +=
+                clampedBonus - historyTable[colorIndex][from][to] + Math.abs(clampedBonus) / maxHistoryScore;
+    }
+
+    static int getPieceScore(int piece) {
+        int pieceScore = 0;
+        if (Piece.type(piece) == Piece.Pawn) pieceScore = EvalConstants.pawnScore;
+        else if (Piece.type(piece) == Piece.Bishop) pieceScore = EvalConstants.bishopScore;
+        else if (Piece.type(piece) == Piece.Knight) pieceScore = EvalConstants.knightScore;
+        else if (Piece.type(piece) == Piece.Rook) pieceScore = EvalConstants.rookScore;
+        else if (Piece.type(piece) == Piece.Queen) pieceScore = EvalConstants.queenScore;
+        else if (Piece.type(piece) == Piece.King) pieceScore = EvalConstants.kingScore;
+        return pieceScore;
+    }
+
 
     public static int evaluateBoard(Board board) {
         int eval = 0;
@@ -138,65 +210,6 @@ public class Bot {
         return eval;
     }
 
-    public static void scoreMoves(Board board, ArrayList<Move> moves, int ply) {
-        for (Move move : moves) {
-            move.score = 0;
-            if (move.isCapture) {
-                int victim = board.squares[move.endIndex];
-                int victimScore = 0;
-                if (Piece.type(victim) == Piece.Pawn) victimScore = EvalConstants.pawnScore;
-                if (Piece.type(victim) == Piece.Bishop) victimScore = EvalConstants.bishopScore;
-                if (Piece.type(victim) == Piece.Knight) victimScore = EvalConstants.knightScore;
-                if (Piece.type(victim) == Piece.Rook) victimScore = EvalConstants.rookScore;
-                if (Piece.type(victim) == Piece.Queen) victimScore = EvalConstants.queenScore;
-                if (Piece.type(victim) == Piece.King) victimScore = EvalConstants.kingScore;
-
-                int attacker = move.piece;
-                int attackerScore = 0;
-                if (Piece.type(attacker) == Piece.Pawn) attackerScore = EvalConstants.pawnScore;
-                if (Piece.type(attacker) == Piece.Bishop) attackerScore = EvalConstants.bishopScore;
-                if (Piece.type(attacker) == Piece.Knight) attackerScore = EvalConstants.knightScore;
-                if (Piece.type(attacker) == Piece.Rook) attackerScore = EvalConstants.rookScore;
-                if (Piece.type(attacker) == Piece.Queen) attackerScore = EvalConstants.queenScore;
-                if (Piece.type(attacker) == Piece.King) attackerScore = EvalConstants.kingScore;
-
-                move.score = 1000000 + (victimScore * 10 - attackerScore);
-            }
-            else if (isKiller(move, ply)) {
-                move.score = 900000;
-            }
-            else {
-                move.score = historyTable[Piece.asIndex(move.piece)][move.endIndex];
-            }
-        }
-    }
-
-    public static Move pickBest(ArrayList<Move> moves, int startIndex) {
-        int bestScore = Integer.MIN_VALUE;
-        int bestIndex = startIndex;
-
-        for (int i = startIndex; i < moves.size(); i++) {
-            if (moves.get(i).score > bestScore) {
-                bestScore = moves.get(i).score;
-                bestIndex = i;
-            }
-        }
-
-        Collections.swap(moves, startIndex, bestIndex);
-        return moves.get(startIndex);
-    }
-
-    static boolean isKiller(Move move, int ply) {
-        return move.equals(killerMoves[ply-1][0]) || move.equals(killerMoves[ply-1][1]);
-    }
-
-    static void storeKiller(Move move, int ply) {
-        if (!move.isCapture) {
-            killerMoves[ply-1][1] = killerMoves[ply-1][0];
-            killerMoves[ply-1][0] = move;
-        }
-    }
-
 
     public static void perftDivide(Board board, int depth) {
         System.out.println("Nodes searched: " + perftDivide(board, depth, depth));
@@ -243,7 +256,7 @@ public class Bot {
 
         for (int sample = 0; sample < numSamples; sample++) {
             long startTime = System.nanoTime();
-            Bot.findBestMove(board, searchDepth);
+            Move best = Bot.findBestMove(board, searchDepth);
             long endTime = System.nanoTime();
 
             long durationMillis = (endTime - startTime) / 1_000_000;

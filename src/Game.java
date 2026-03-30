@@ -103,8 +103,8 @@ public class Game {
     static Move makeBotMove(Board board) {
         long startTime = System.nanoTime();
         Move botMove = Bot.findBestMove(board, searchDepth);
-        board.makeMove(botMove);
         long endTime = System.nanoTime();
+        board.makeMove(botMove);
 
         long durationMillis = (endTime - startTime) / 1_000_000;
         System.out.println("Evaluation: " + (durationMillis / 1000.0) + "s");

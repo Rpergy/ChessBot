@@ -56,7 +56,8 @@ public class Move implements Comparable<Move> {
     }
 
     public boolean equals(Object o) {
-        if (!(o instanceof Move m)) return false;
+        if (!(o instanceof Move)) return false;
+        Move m = (Move)o;
         return this.startIndex == m.startIndex && this.endIndex == m.endIndex && this.promotion == m.promotion;
     }
 
