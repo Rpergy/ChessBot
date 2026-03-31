@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 public class Bot {
-    static int MAX_DEPTH = 5;
+    static int MAX_DEPTH = 10;
 
     static int[][][] historyTable = new int[2][64][64];
     static int maxHistoryScore = 16384;
@@ -17,53 +17,13 @@ public class Bot {
     }
 
     private static Move rootNegamax(Board board, int depth, int alpha, int beta) {
-        if (depth == 0) return null;
+        if (depth <= 0) return null;
 
-        int max = Integer.MIN_VALUE;
-        Move maxMove = null;
+        int bestScore = EvalConstants.MIN_SCORE;
+        Move bestMove = null;
 
         ArrayList<Move> moves = board.getLegalMoves();
-//        scoreMoves(board, moves, depth);
-
-        for (int i = 0; i < moves.size(); i++) {
-            Move m = pickBestMove(moves, i);
-
-            board.makeMove(m);
-            int score = negamax(board, depth - 1, -beta, -alpha);
-            board.unmakeMove(m);
-
-            if (score > max) {
-                max = score;
-                maxMove = m;
-                if (score > alpha) alpha = score;
-            }
-            if (score >= beta) {
-                if (!m.isCapture) {
-                    storeKiller(m, depth);
-                    updateHistoryTable(Piece.color(m.piece), m.startIndex, m.endIndex, depth * depth);
-                }
-                return maxMove;
-            }
-        }
-
-        return maxMove;
-    }
-
-    private static int negamax(Board board, int depth, int alpha, int beta) {
-        ArrayList<Move> moves = board.getLegalMoves();
-        nodesSearched++;
-        if (moves.isEmpty()) {
-            if (board.inCheck(board.toMove)) return -EvalConstants.checkScore;
-            else return 0;
-        }
-
-        if (depth == 0) return 0;
-//        if (depth == 0) return evaluateBoard(board);
-
-        int max = Integer.MIN_VALUE;
-
-//        scoreMoves(board, moves, depth);
-
+        scoreMoves(board, moves, depth);
         for (int i = 0; i < moves.size(); i++) {
             Move m = pickBestMove(moves, i);
 
@@ -71,20 +31,52 @@ public class Bot {
             int score = -negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove(m);
 
-            if (score > max) {
-                max = score;
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = m;
+
                 if (score > alpha) alpha = score;
             }
             if (score >= beta) {
                 if (!m.isCapture) {
+                    updateHistoryTable(Piece.color(m.piece), m.endIndex, m.startIndex, depth * depth);
                     storeKiller(m, depth);
-                    updateHistoryTable(Piece.color(m.piece), m.startIndex, m.endIndex, depth * depth);
                 }
-                return score;
+                return bestMove;
             }
         }
+        return bestMove;
+    }
 
-        return max;
+    private static int negamax(Board board, int depth, int alpha, int beta) {
+        nodesSearched++;
+        if (depth <= 0) {
+            return evaluateBoard(board);
+        }
+
+        int bestScore = EvalConstants.MIN_SCORE;
+        ArrayList<Move> moves = board.getLegalMoves();
+        scoreMoves(board, moves, depth);
+        for (int i = 0; i < moves.size(); i++) {
+            Move m = pickBestMove(moves, i);
+
+            board.makeMove(m);
+            int score = -negamax(board, depth - 1, -beta, -alpha);
+            board.unmakeMove(m);
+
+            if (score > bestScore) {
+                bestScore = score;
+                if (score > alpha) alpha = score;
+            }
+            if (score >= beta) {
+                if (!m.isCapture) {
+                    updateHistoryTable(Piece.color(m.piece), m.endIndex, m.startIndex, depth * depth);
+                    storeKiller(m, depth);
+                }
+                return bestScore;
+            }
+        }
+        return bestScore;
     }
 
     public static void scoreMoves(Board board, ArrayList<Move> moves, int depth) {
