@@ -486,6 +486,7 @@ public class Board {
                 int passantMove = (color == Piece.White) ? 1 : -1;
                 boolean validLastMove = (Math.abs(lastMove.endIndex - lastMove.startIndex) == 16) && (lastMove.piece == (Piece.Pawn | otherColor));
                 boolean adjacentPawns = (Math.abs(lastMove.endIndex - from) == 1);
+
                 if (validLastMove && adjacentPawns && (from / 8) == passantRank) {
                     int to = lastMove.endIndex + passantMove * 8;
                     moves.add(new Move(from, to, (Piece.Pawn | color), false, false, true));
@@ -664,6 +665,34 @@ public class Board {
 
             if (containsPiece && pinSetup)
                 mask |= pinRay;
+
+            diagonals &= diagonals - 1;
+        }
+
+        return mask;
+    }
+
+    public long getPinMask(int color) {
+        long mask = 0L;
+        int kingPos = Long.numberOfTrailingZeros(getPieceBitboard(Piece.King | color));
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+
+        long straights = getPieceBitboard(Piece.Rook | otherColor) | getPieceBitboard(Piece.Queen | otherColor);
+        while (straights != 0) {
+            int pos = Long.numberOfTrailingZeros(straights);
+
+            long pinRay = MoveLookups.getRookPinRays(pos, kingPos);
+            mask |= pinRay;
+
+            straights &= straights - 1;
+        }
+
+        long diagonals = getPieceBitboard(Piece.Bishop | otherColor) | getPieceBitboard(Piece.Queen | otherColor);
+        while (diagonals != 0) {
+            int pos = Long.numberOfTrailingZeros(diagonals);
+
+            long pinRay = MoveLookups.getBishopPinRays(pos, kingPos);
+            mask |= pinRay;
 
             diagonals &= diagonals - 1;
         }

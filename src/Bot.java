@@ -13,7 +13,7 @@ public class Bot {
 
     public static Move findBestMove(Board board, int searchDepth) {
         MAX_DEPTH = searchDepth;
-        return rootNegamax(board, searchDepth, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        return rootNegamax(board, searchDepth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE);
     }
 
     private static Move rootNegamax(Board board, int depth, int alpha, int beta) {
@@ -23,7 +23,7 @@ public class Bot {
         Move maxMove = null;
 
         ArrayList<Move> moves = board.getLegalMoves();
-        scoreMoves(board, moves, depth);
+//        scoreMoves(board, moves, depth);
 
         for (int i = 0; i < moves.size(); i++) {
             Move m = pickBestMove(moves, i);
@@ -50,20 +50,19 @@ public class Bot {
     }
 
     private static int negamax(Board board, int depth, int alpha, int beta) {
-        nodesSearched++;
-        if (depth == 0) {
-            return evaluateBoard(board);
-        }
-
-        int max = Integer.MIN_VALUE;
-
         ArrayList<Move> moves = board.getLegalMoves();
-        scoreMoves(board, moves, depth);
-
+        nodesSearched++;
         if (moves.isEmpty()) {
             if (board.inCheck(board.toMove)) return -EvalConstants.checkScore;
             else return 0;
         }
+
+        if (depth == 0) return 0;
+//        if (depth == 0) return evaluateBoard(board);
+
+        int max = Integer.MIN_VALUE;
+
+//        scoreMoves(board, moves, depth);
 
         for (int i = 0; i < moves.size(); i++) {
             Move m = pickBestMove(moves, i);
@@ -81,7 +80,7 @@ public class Bot {
                     storeKiller(m, depth);
                     updateHistoryTable(Piece.color(m.piece), m.startIndex, m.endIndex, depth * depth);
                 }
-                return max;
+                return score;
             }
         }
 
@@ -207,7 +206,7 @@ public class Bot {
 
         // The negamax algorithm requires white and black moves to be of opposite signs
         int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
-        return eval;
+        return relativeMultiplier * eval;
     }
 
 

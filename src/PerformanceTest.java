@@ -4,11 +4,8 @@ public class PerformanceTest {
 
         for (int i = 1; i <= 5; i++) {
             Bot.findBestMove(board, i);
-            System.out.println();
             System.out.println(Bot.nodesSearched);
             Bot.nodesSearched = 0;
         }
-
-//        Bot.averageSearchTime(board, 50, 4);
     }
 }

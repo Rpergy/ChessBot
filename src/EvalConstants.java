@@ -1,4 +1,7 @@
 public class EvalConstants {
+    public static final int MIN_SCORE = -50000;
+    public static final int MAX_SCORE = 50000;
+
     // Scores for Material evaluation
     public static final int kingScore = 200000;
     public static final int queenScore = 1500;
@@ -9,7 +12,7 @@ public class EvalConstants {
 
     // Additional evaluation constants
     public static final int mobilityMultiplier = 5;
-    public static final int checkScore = Integer.MAX_VALUE;
+    public static final int checkScore = 50000;
 
     // Piece-Square Tables
     // Note: These tables are from black's perspective (index 0 = rank 8). White's evaluation must invert the table

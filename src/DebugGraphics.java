@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class DebugGraphics {
     public static void main(String[] args) {
-        Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq");
+        Board board = new Board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
 
         drawBoard(board);
     }
@@ -22,7 +22,8 @@ public class DebugGraphics {
 
         drawEmptyTiles(~board.getOccupancy(), frame, squares);
 
-        displayMoves(board, squares, board.toMove);
+//        displayMoves(board, squares, board.toMove);
+        System.out.println(board.inCheck(board.toMove));
 
         frame.setSize(GameConstants.windowWidth, GameConstants.windowHeight);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
