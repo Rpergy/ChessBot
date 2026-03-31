@@ -22,8 +22,7 @@ public class DebugGraphics {
 
         drawEmptyTiles(~board.getOccupancy(), frame, squares);
 
-//        displayMoves(board, squares, board.toMove);
-        System.out.println(board.inCheck(board.toMove));
+        displayMoves(board, squares, board.toMove);
 
         frame.setSize(GameConstants.windowWidth, GameConstants.windowHeight);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -86,7 +85,7 @@ public class DebugGraphics {
     }
 
     static void displayMoves(Board board, JButton[] squares, int color) {
-        ArrayList<Move> moves = board.getLegalMoves(color);
+        ArrayList<Move> moves = board.getLegalCaptures(color);
 
         System.out.println("Move Count: " + moves.size());
         for (Move m : moves) {

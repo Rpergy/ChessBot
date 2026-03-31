@@ -254,9 +254,15 @@ public class Board {
         lastMove = lastBoardInfo.lastMove;
     }
 
-    public ArrayList<Move> getLegalMoves() { return getLegalMoves(toMove); }
+    public ArrayList<Move> getLegalMoves() { return getLegalMoves(toMove, false); }
 
-    public ArrayList<Move> getLegalMoves(int color) {
+    public ArrayList<Move> getLegalMoves(int color) { return getLegalMoves(color, false); }
+
+    public ArrayList<Move> getLegalCaptures() { return getLegalMoves(toMove, true); }
+
+    public ArrayList<Move> getLegalCaptures(int color) { return getLegalMoves(color, true); }
+
+    public ArrayList<Move> getLegalMoves(int color, boolean onlyCaptures) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
         ArrayList<Move> moves = new ArrayList<>();
 
@@ -275,21 +281,21 @@ public class Board {
                     blockMask = MoveLookups.getSquaresBetween(kingSq, checkerSq) | (1L << checkerSq);
             }
 
-            getPawnMoves(color, blockMask, moves);
-            getKnightMoves(color, blockMask, moves);
-            getBishopMoves(color, blockMask, moves);
-            getRookMoves(color, blockMask, moves);
-            getQueenMoves(color, blockMask, moves);
-            getKingMoves(color, moves);
+            getPawnMoves(color, blockMask, moves, onlyCaptures);
+            getKnightMoves(color, blockMask, moves, onlyCaptures);
+            getBishopMoves(color, blockMask, moves, onlyCaptures);
+            getRookMoves(color, blockMask, moves, onlyCaptures);
+            getQueenMoves(color, blockMask, moves, onlyCaptures);
+            getKingMoves(color, moves, onlyCaptures);
         }
         else {
-            getKingMoves(color, moves);
+            getKingMoves(color, moves, onlyCaptures);
         }
 
         return moves;
     }
 
-    public void getRookMoves(int color, long blockMask, ArrayList<Move> moves) {
+    public void getRookMoves(int color, long blockMask, ArrayList<Move> moves, boolean onlyCaptures) {
         long occupancy = getOccupancy();
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
@@ -314,12 +320,13 @@ public class Board {
 
                 boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
 
-                moves.add(new Move(from, to, (Piece.Rook | color), capture, false, false));
+                if (!onlyCaptures || capture)
+                    moves.add(new Move(from, to, (Piece.Rook | color), capture, false, false));
             }
         }
     }
 
-    public void getBishopMoves(int color, long blockMask, ArrayList<Move> moves) {
+    public void getBishopMoves(int color, long blockMask, ArrayList<Move> moves, boolean onlyCaptures) {
         long occupancy = getOccupancy();
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
@@ -343,12 +350,13 @@ public class Board {
 
                 boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
 
-                moves.add(new Move(from, to, (Piece.Bishop | color), capture, false, false));
+                if (!onlyCaptures || capture)
+                    moves.add(new Move(from, to, (Piece.Bishop | color), capture, false, false));
             }
         }
     }
 
-    public void getKnightMoves(int color, long blockMask, ArrayList<Move> moves) {
+    public void getKnightMoves(int color, long blockMask, ArrayList<Move> moves, boolean onlyCaptures) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
         long knights = getPieceBitboard(Piece.Knight | color);
@@ -371,12 +379,13 @@ public class Board {
 
                 boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
 
-                moves.add(new Move(from, to, (Piece.Knight | color), capture, false, false));
+                if (!onlyCaptures || capture)
+                    moves.add(new Move(from, to, (Piece.Knight | color), capture, false, false));
             }
         }
     }
 
-    public void getQueenMoves(int color, long blockMask, ArrayList<Move> moves) {
+    public void getQueenMoves(int color, long blockMask, ArrayList<Move> moves, boolean onlyCaptures) {
         long occupancy = getOccupancy();
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
@@ -400,12 +409,13 @@ public class Board {
 
                 boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
 
-                moves.add(new Move(from, to, (Piece.Queen | color), capture, false, false));
+                if (!onlyCaptures || capture)
+                    moves.add(new Move(from, to, (Piece.Queen | color), capture, false, false));
             }
         }
     }
 
-    public void getPawnMoves(int color, long blockMask, ArrayList<Move> moves) {
+    public void getPawnMoves(int color, long blockMask, ArrayList<Move> moves, boolean onlyCaptures) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
         long pawns = getPieceBitboard(Piece.Pawn | color);
@@ -449,6 +459,9 @@ public class Board {
             push &= ~getOccupancy();
             push &= blockMask;
 
+            // Prevents the move generator from generating push moves if there should only be captures
+            if (onlyCaptures) push = 0L;
+
             while (push != 0) {
                 int to = Long.numberOfTrailingZeros(push);
                 push &= push - 1;
@@ -466,7 +479,7 @@ public class Board {
 
             // Double Pushers
             int doublePushRank = (color == Piece.White) ? 1 : 6;
-            if (from / 8 == doublePushRank) {
+            if (from / 8 == doublePushRank && !onlyCaptures) {
                 int moveDirection = (color == Piece.White) ? 8 : -8;
                 long pushBlockerMask = ((1L << (from + moveDirection)) | (1L << (from + 2 * moveDirection)));
                 int to = from + 2 * moveDirection;
@@ -495,7 +508,7 @@ public class Board {
         }
     }
 
-    public void getKingMoves(int color, ArrayList<Move> moves) {
+    public void getKingMoves(int color, ArrayList<Move> moves, boolean onlyCaptures) {
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
 
         long kings = getPieceBitboard(Piece.King | color);
@@ -520,7 +533,8 @@ public class Board {
 
                 boolean capture = ((1L << to) & getColorBitboard(otherColor)) != 0;
 
-                moves.add(new Move(from, to, (Piece.King | color), capture, false, false));
+                if (!onlyCaptures || capture)
+                    moves.add(new Move(from, to, (Piece.King | color), capture, false, false));
             }
         }
 
@@ -553,9 +567,9 @@ public class Board {
         boolean enemyAttackingThroughKingside = ((getAttackBitboard(otherColor) & kingsideThroughMask) != 0);
         boolean enemyAttackingThroughQueenside = ((getAttackBitboard(otherColor) & queensideThroughMask) != 0);
 
-        if (kingsideCastle && !inCheck && !kingsideMovingIntoCheck && !enemyAttackingThroughKingside)
+        if (!onlyCaptures && kingsideCastle && !inCheck && !kingsideMovingIntoCheck && !enemyAttackingThroughKingside)
             moves.add(new Move(kingPos, kingPos + 2, (Piece.King | color), false, true, false));
-        if (queensideCastle && !inCheck && !queensideMovingIntoCheck && !enemyAttackingThroughQueenside)
+        if (!onlyCaptures && queensideCastle && !inCheck && !queensideMovingIntoCheck && !enemyAttackingThroughQueenside)
             moves.add(new Move(kingPos, kingPos - 2, (Piece.King | color), false, true, false));
     }
 

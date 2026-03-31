@@ -148,8 +148,8 @@ public class Bot {
     public static int evaluateBoard(Board board) {
         int eval = 0;
 
-        ArrayList<Move> whiteMoves = board.getLegalMoves(Piece.White);
-        ArrayList<Move> blackMoves = board.getLegalMoves(Piece.Black);
+        ArrayList<Move> whiteMoves = board.getLegalMoves(Piece.White, false);
+        ArrayList<Move> blackMoves = board.getLegalMoves(Piece.Black, false);
 
         // Material score - The number of pieces available
         int kingDiff = EvalConstants.kingScore * (board.getCount(Piece.King | Piece.White) - board.getCount(Piece.King | Piece.Black));
@@ -199,6 +199,25 @@ public class Bot {
         // The negamax algorithm requires white and black moves to be of opposite signs
         int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
         return relativeMultiplier * eval;
+    }
+
+    public static int quiesce(Board board, int alpha, int beta) {
+        // Standing Pat
+        int bestScore = evaluateBoard(board); // Start off with static eval
+        if (bestScore >= beta) return bestScore;
+        if (bestScore > alpha) alpha = bestScore;
+
+        ArrayList<Move> captures = board.getLegalCaptures();
+        for (Move m : captures) {
+            board.makeMove(m);
+            int score = -quiesce(board, -beta, -alpha);
+            board.unmakeMove(m);
+
+            if (score >= beta) return score;
+            if (score > bestScore) bestScore = score;
+            if (score > alpha) alpha = score;
+        }
+        return bestScore;
     }
 
 
