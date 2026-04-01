@@ -12,7 +12,7 @@ public class Game {
 
     public static int playerColor = Piece.White;
 
-    public static int searchDepth = 5;
+    public static int searchDepth = 6;
 
     public static void main(String[] args) {
         Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");

@@ -11,6 +11,7 @@ public class Bot {
 
     static int nodesSearched = 0;
 
+    // Search
     public static Move findBestMove(Board board, int searchDepth) {
         MAX_DEPTH = searchDepth;
         return rootNegamax(board, searchDepth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE);
@@ -50,9 +51,7 @@ public class Bot {
 
     private static int negamax(Board board, int depth, int alpha, int beta) {
         nodesSearched++;
-        if (depth <= 0) {
-            return evaluateBoard(board);
-        }
+        if (depth <= 0) return quiesce(board, alpha, beta);
 
         int bestScore = EvalConstants.MIN_SCORE;
         ArrayList<Move> moves = board.getLegalMoves();
@@ -79,16 +78,37 @@ public class Bot {
         return bestScore;
     }
 
+    public static int quiesce(Board board, int alpha, int beta) {
+        // Standing Pat
+        int bestScore = evaluateBoard(board); // Start off with static eval
+        if (bestScore >= beta) return bestScore;
+        if (bestScore > alpha) alpha = bestScore;
+
+        ArrayList<Move> captures = board.getLegalCaptures();
+        for (Move m : captures) {
+            board.makeMove(m);
+            int score = -quiesce(board, -beta, -alpha);
+            board.unmakeMove(m);
+
+            if (score >= beta) return score;
+            if (score > bestScore) bestScore = score;
+            if (score > alpha) alpha = score;
+        }
+        return bestScore;
+    }
+
+
+    // Move ordering
     public static void scoreMoves(Board board, ArrayList<Move> moves, int depth) {
         int ply = MAX_DEPTH - depth;
         for (Move move : moves) {
             move.score = 0;
             if (move.isCapture) {
                 int victim = board.squares[move.endIndex];
-                int victimScore = getPieceScore(victim);
+                int victimScore = EvalConstants.getPieceScore(victim);
 
                 int attacker = move.piece;
-                int attackerScore = getPieceScore(attacker);
+                int attackerScore = EvalConstants.getPieceScore(attacker);
 
                 move.score = 1000000 + (victimScore * 10 - attackerScore);
             }
@@ -133,18 +153,8 @@ public class Bot {
                 clampedBonus - historyTable[colorIndex][from][to] + Math.abs(clampedBonus) / maxHistoryScore;
     }
 
-    static int getPieceScore(int piece) {
-        int pieceScore = 0;
-        if (Piece.type(piece) == Piece.Pawn) pieceScore = EvalConstants.pawnScore;
-        else if (Piece.type(piece) == Piece.Bishop) pieceScore = EvalConstants.bishopScore;
-        else if (Piece.type(piece) == Piece.Knight) pieceScore = EvalConstants.knightScore;
-        else if (Piece.type(piece) == Piece.Rook) pieceScore = EvalConstants.rookScore;
-        else if (Piece.type(piece) == Piece.Queen) pieceScore = EvalConstants.queenScore;
-        else if (Piece.type(piece) == Piece.King) pieceScore = EvalConstants.kingScore;
-        return pieceScore;
-    }
 
-
+    // Evaluation
     public static int evaluateBoard(Board board) {
         int eval = 0;
 
@@ -201,26 +211,8 @@ public class Bot {
         return relativeMultiplier * eval;
     }
 
-    public static int quiesce(Board board, int alpha, int beta) {
-        // Standing Pat
-        int bestScore = evaluateBoard(board); // Start off with static eval
-        if (bestScore >= beta) return bestScore;
-        if (bestScore > alpha) alpha = bestScore;
 
-        ArrayList<Move> captures = board.getLegalCaptures();
-        for (Move m : captures) {
-            board.makeMove(m);
-            int score = -quiesce(board, -beta, -alpha);
-            board.unmakeMove(m);
-
-            if (score >= beta) return score;
-            if (score > bestScore) bestScore = score;
-            if (score > alpha) alpha = score;
-        }
-        return bestScore;
-    }
-
-
+    // Testing
     public static void perftDivide(Board board, int depth) {
         System.out.println("Nodes searched: " + perftDivide(board, depth, depth));
     }

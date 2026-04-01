@@ -81,4 +81,16 @@ public class EvalConstants {
              20, 20,  0,  0,  0,  0, 20, 20,
              20, 30, 10,  0,  0, 10, 30, 20
     };
+
+    // Helper Methods
+    static int getPieceScore(int piece) {
+        int pieceScore = 0;
+        if (Piece.type(piece) == Piece.Pawn) pieceScore = pawnScore;
+        else if (Piece.type(piece) == Piece.Bishop) pieceScore = bishopScore;
+        else if (Piece.type(piece) == Piece.Knight) pieceScore = knightScore;
+        else if (Piece.type(piece) == Piece.Rook) pieceScore = rookScore;
+        else if (Piece.type(piece) == Piece.Queen) pieceScore = queenScore;
+        else if (Piece.type(piece) == Piece.King) pieceScore = kingScore;
+        return pieceScore;
+    }
 }
