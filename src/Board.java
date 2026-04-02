@@ -1,7 +1,7 @@
 import java.util.*;
 
 public class Board {
-    HashMap<Integer, Long> pieceBitboards;
+    long[] pieceBitboards;
     int[] squares;
 
     int toMove;
@@ -15,7 +15,7 @@ public class Board {
 
     public Board(String fen) {
         MoveLookups.initializeData();
-        pieceBitboards = new HashMap<>();
+        pieceBitboards = new long[12];
         squares = new int[64];
         lastMove = null;
         boardInfo = new ArrayDeque<>();
@@ -40,8 +40,8 @@ public class Board {
                     int pieceType = fenMap.get(square);
                     int index = rank * 8 + file;
 
-                    long oldBitboard = pieceBitboards.getOrDefault(pieceType, 0L);
-                    pieceBitboards.put(pieceType, oldBitboard | (1L << index));
+                    long oldBitboard = getPieceBitboard(pieceType);
+                    setPieceBitboard(pieceType, oldBitboard | (1L << index));
                     squares[index] = pieceType;
                     file ++;
                 }
@@ -93,13 +93,13 @@ public class Board {
         newBitboard |= (1L << m.endIndex);
         squares[m.endIndex] = m.piece;
 
-        pieceBitboards.put(m.piece, newBitboard);
+        setPieceBitboard(m.piece, newBitboard);
 
         // Remove the captured piece from its bitboard
         if (m.isCapture) {
             long newPieceBitboard = getPieceBitboard(capturedPiece);
             newPieceBitboard &= ~(1L << m.endIndex);
-            pieceBitboards.put(capturedPiece, newPieceBitboard);
+            setPieceBitboard(capturedPiece, newPieceBitboard);
         }
 
         // Remove the captured pawn from the bitboard
@@ -107,7 +107,7 @@ public class Board {
             int offset = (color == Piece.White) ? -8 : 8;
             long newPawnBitboard = getPieceBitboard(Piece.Pawn | otherColor);
             newPawnBitboard &= ~(1L << (m.endIndex + offset));
-            pieceBitboards.put((Piece.Pawn | otherColor), newPawnBitboard);
+            setPieceBitboard((Piece.Pawn | otherColor), newPawnBitboard);
             squares[m.endIndex + offset] = 0;
         }
 
@@ -140,20 +140,20 @@ public class Board {
                 newRookBitboard |= (1L << 59);
                 squares[59] = (Piece.Rook | color);
             }
-            pieceBitboards.put((Piece.Rook | color), newRookBitboard);
+            setPieceBitboard((Piece.Rook | color), newRookBitboard);
         }
 
         if (m.promotion != 0) {
             // Remove the pawn from the board
             long newPawnBitboard = getPieceBitboard(m.piece);
             newPawnBitboard &= ~(1L << m.endIndex);
-            pieceBitboards.put(m.piece, newPawnBitboard);
+            setPieceBitboard(m.piece, newPawnBitboard);
             squares[m.endIndex] = 0;
 
             // Replace it with the promotion
             long newPieceBitboard = getPieceBitboard(m.promotion);
             newPieceBitboard |= (1L << m.endIndex);
-            pieceBitboards.put(m.promotion, newPieceBitboard);
+            setPieceBitboard(m.promotion, newPieceBitboard);
             squares[m.endIndex] = m.promotion;
         }
 
@@ -183,7 +183,7 @@ public class Board {
             newBitboard |= (1L << m.startIndex);
             squares[m.startIndex] = m.piece;
 
-            pieceBitboards.put(m.piece, newBitboard);
+            setPieceBitboard(m.piece, newBitboard);
         }
         else {
             long newPromotionBitboard = getPieceBitboard(m.promotion);
@@ -196,15 +196,15 @@ public class Board {
             newBitboard |= (1L << m.startIndex);
             squares[m.startIndex] = m.piece;
 
-            pieceBitboards.put(m.piece, newBitboard);
-            pieceBitboards.put(m.promotion, newPromotionBitboard);
+            setPieceBitboard(m.piece, newBitboard);
+            setPieceBitboard(m.promotion, newPromotionBitboard);
         }
 
         // Add the captured piece to its bitboard
         if (m.isCapture) {
             long newPieceBitboard = getPieceBitboard(lastBoardInfo.capturedPiece);
             newPieceBitboard |= (1L << m.endIndex);
-            pieceBitboards.put(lastBoardInfo.capturedPiece, newPieceBitboard);
+            setPieceBitboard(lastBoardInfo.capturedPiece, newPieceBitboard);
             squares[m.endIndex] = lastBoardInfo.capturedPiece;
         }
 
@@ -213,7 +213,7 @@ public class Board {
             int offset = (color == Piece.White) ? -8 : 8;
             long newPawnBitboard = getPieceBitboard(Piece.Pawn | otherColor);
             newPawnBitboard |= (1L << (m.endIndex + offset));
-            pieceBitboards.put((Piece.Pawn | otherColor), newPawnBitboard);
+            setPieceBitboard((Piece.Pawn | otherColor), newPawnBitboard);
             squares[m.endIndex + offset] = (Piece.Pawn | otherColor);
         }
 
@@ -246,7 +246,7 @@ public class Board {
                 newRookBitboard |= (1L << 56);
                 squares[56] = (Piece.Rook | color);
             }
-            pieceBitboards.put((Piece.Rook | color), newRookBitboard);
+            setPieceBitboard((Piece.Rook | color), newRookBitboard);
         }
 
         toMove = (toMove == Piece.White) ? Piece.Black : Piece.White;
@@ -521,11 +521,11 @@ public class Board {
             attacks &= ~getColorBitboard(color);
 
             long presentKing = getPieceBitboard(Piece.King | color);
-            long removeKing = Bitboard.setSquare(pieceBitboards.get((Piece.King | color)), from, false);
+            long removeKing = Bitboard.setSquare(getPieceBitboard((Piece.King | color)), from, false);
 
-            pieceBitboards.put((Piece.King | color), removeKing);
+            setPieceBitboard((Piece.King | color), removeKing);
             attacks &= ~getAttackBitboard(otherColor);
-            pieceBitboards.put((Piece.King | color), presentKing);
+            setPieceBitboard((Piece.King | color), presentKing);
 
             while (attacks != 0) {
                 int to = Long.numberOfTrailingZeros(attacks);
@@ -715,7 +715,11 @@ public class Board {
     }
 
     public long getPieceBitboard(int piece) {
-        return pieceBitboards.getOrDefault(piece, 0L);
+        return pieceBitboards[Piece.asIndex(piece)];
+    }
+
+    public void setPieceBitboard(int piece, long newBoard) {
+        pieceBitboards[Piece.asIndex(piece)] = newBoard;
     }
 
     public int getCount(int piece) {
