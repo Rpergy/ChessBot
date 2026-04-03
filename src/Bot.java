@@ -1,5 +1,8 @@
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.concurrent.*;
 
 public class Bot {
     static int MAX_DEPTH = 10;
@@ -11,13 +14,23 @@ public class Bot {
 
     static int nodesSearched = 0;
 
+    static long searchTime = 0L;
+
     // Search
-    public static Move findBestMove(Board board, int searchDepth) {
-        MAX_DEPTH = searchDepth;
-        return rootNegamax(board, searchDepth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE);
+    public static Move findBestMove(Board board, int msLimit) {
+        int searchDepth = 1;
+        Move bestMove = null;
+        CompletableFuture.supplyAsync(() -> {
+            
+        });
+        while(searchTime < msLimit) {
+            bestMove = rootNegamax(board, searchDepth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE, msLimit);
+            searchDepth++;
+        }
+        return bestMove;
     }
 
-    private static Move rootNegamax(Board board, int depth, int alpha, int beta) {
+    private static Move rootNegamax(Board board, int depth, int alpha, int beta, int timeLimit) {
         if (depth <= 0) return null;
 
         int bestScore = EvalConstants.MIN_SCORE;
@@ -26,10 +39,11 @@ public class Bot {
         ArrayList<Move> moves = board.getLegalMoves();
         scoreMoves(board, moves, depth);
         for (int i = 0; i < moves.size(); i++) {
+            if (searchTime > timeLimit) return null;
             Move m = pickBestMove(moves, i);
 
             board.makeMove(m);
-            int score = -negamax(board, depth - 1, -beta, -alpha);
+            int score = -negamax(board, depth - 1, -beta, -alpha, timeLimit);
             board.unmakeMove(m);
 
             if (score > bestScore) {
@@ -49,7 +63,7 @@ public class Bot {
         return bestMove;
     }
 
-    private static int negamax(Board board, int depth, int alpha, int beta) {
+    private static int negamax(Board board, int depth, int alpha, int beta, int timeLimit) {
         nodesSearched++;
         if (depth <= 0) return quiesce(board, alpha, beta);
 
@@ -57,10 +71,11 @@ public class Bot {
         ArrayList<Move> moves = board.getLegalMoves();
         scoreMoves(board, moves, depth);
         for (int i = 0; i < moves.size(); i++) {
+            if (searchTime > timeLimit) return 0;
             Move m = pickBestMove(moves, i);
 
             board.makeMove(m);
-            int score = -negamax(board, depth - 1, -beta, -alpha);
+            int score = -negamax(board, depth - 1, -beta, -alpha, timeLimit);
             board.unmakeMove(m);
 
             if (score > bestScore) {
