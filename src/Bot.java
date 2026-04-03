@@ -14,23 +14,35 @@ public class Bot {
 
     static int nodesSearched = 0;
 
-    static long searchTime = 0L;
+    static boolean timeLimitReached = false;
 
     // Search
     public static Move findBestMove(Board board, int msLimit) {
+        timeLimitReached = false;
         int searchDepth = 1;
         Move bestMove = null;
-        CompletableFuture.supplyAsync(() -> {
-            
+
+        Thread t = new Thread(() -> {
+            try {
+                Thread.sleep(msLimit);
+                timeLimitReached = true;
+            }
+            catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         });
-        while(searchTime < msLimit) {
-            bestMove = rootNegamax(board, searchDepth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE, msLimit);
+
+        t.start();
+        while(!timeLimitReached) {
+            System.out.println("Searching Depth " + searchDepth);
+            bestMove = rootNegamax(board, searchDepth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE);
             searchDepth++;
         }
+
         return bestMove;
     }
 
-    private static Move rootNegamax(Board board, int depth, int alpha, int beta, int timeLimit) {
+    private static Move rootNegamax(Board board, int depth, int alpha, int beta) {
         if (depth <= 0) return null;
 
         int bestScore = EvalConstants.MIN_SCORE;
@@ -39,11 +51,11 @@ public class Bot {
         ArrayList<Move> moves = board.getLegalMoves();
         scoreMoves(board, moves, depth);
         for (int i = 0; i < moves.size(); i++) {
-            if (searchTime > timeLimit) return null;
+            if (timeLimitReached) return bestMove;
             Move m = pickBestMove(moves, i);
 
             board.makeMove(m);
-            int score = -negamax(board, depth - 1, -beta, -alpha, timeLimit);
+            int score = -negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove(m);
 
             if (score > bestScore) {
@@ -63,7 +75,7 @@ public class Bot {
         return bestMove;
     }
 
-    private static int negamax(Board board, int depth, int alpha, int beta, int timeLimit) {
+    private static int negamax(Board board, int depth, int alpha, int beta) {
         nodesSearched++;
         if (depth <= 0) return quiesce(board, alpha, beta);
 
@@ -71,11 +83,11 @@ public class Bot {
         ArrayList<Move> moves = board.getLegalMoves();
         scoreMoves(board, moves, depth);
         for (int i = 0; i < moves.size(); i++) {
-            if (searchTime > timeLimit) return 0;
+            if (timeLimitReached) return bestScore;
             Move m = pickBestMove(moves, i);
 
             board.makeMove(m);
-            int score = -negamax(board, depth - 1, -beta, -alpha, timeLimit);
+            int score = -negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove(m);
 
             if (score > bestScore) {

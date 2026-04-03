@@ -12,7 +12,7 @@ public class Game {
 
     public static int playerColor = Piece.White;
 
-    public static int searchDepth = 6;
+    public static int thinkingTime = 1000;
 
     public static void main(String[] args) {
         Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
@@ -102,7 +102,7 @@ public class Game {
 
     static Move makeBotMove(Board board) {
         long startTime = System.nanoTime();
-        Move botMove = Bot.findBestMove(board, 1500);
+        Move botMove = Bot.findBestMove(board, thinkingTime);
         long endTime = System.nanoTime();
         board.makeMove(botMove);
 
