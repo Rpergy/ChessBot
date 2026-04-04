@@ -815,14 +815,4 @@ class UnmakeInfo {
         if (lastMove != null) this.lastMove = new Move(lastMove);
         else this.lastMove = null;
     }
-
-    public UnmakeInfo(UnmakeInfo copy) {
-        capturedPiece = copy.capturedPiece;
-        whiteQueenCastle = copy.whiteQueenCastle;
-        whiteKingCastle = copy.whiteKingCastle;
-        blackQueenCastle = copy.blackQueenCastle;
-        blackKingCastle = copy.blackKingCastle;
-        if (copy.lastMove != null) lastMove = new Move(copy.lastMove);
-        else lastMove = null;
-    }
 }

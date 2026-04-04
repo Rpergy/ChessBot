@@ -15,7 +15,7 @@ public class Game {
     public static int thinkingTime = 1000;
 
     public static void main(String[] args) {
-        Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        Board board = new Board("3r4/3r4/3k4/8/8/8/3K4/8 w - - 0 1");
 
         setupWindow(board);
     }
@@ -101,6 +101,7 @@ public class Game {
     }
 
     static Move makeBotMove(Board board) {
+        Bot.nodesSearched = 0;
         long startTime = System.nanoTime();
         Move botMove = Bot.findBestMove(board, thinkingTime);
         long endTime = System.nanoTime();
@@ -108,6 +109,7 @@ public class Game {
 
         long durationMillis = (endTime - startTime) / 1_000_000;
         System.out.println("Evaluation: " + (durationMillis / 1000.0) + "s");
+        System.out.println("Nodes Searched: " + Bot.nodesSearched);
 
         handleEndgame(board);
 

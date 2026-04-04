@@ -1,11 +1,8 @@
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.concurrent.*;
 
 public class Bot {
-    static int MAX_DEPTH = 10;
+    static int MAX_DEPTH = 15;
 
     static int[][][] historyTable = new int[2][64][64];
     static int maxHistoryScore = 16384;
@@ -40,6 +37,10 @@ public class Bot {
         }
 
         return bestMove;
+    }
+
+    public static Move findBestMoveStatic(Board board, int depth) {
+        return rootNegamax(board, depth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE);
     }
 
     private static Move rootNegamax(Board board, int depth, int alpha, int beta) {
@@ -77,7 +78,7 @@ public class Bot {
 
     private static int negamax(Board board, int depth, int alpha, int beta) {
         nodesSearched++;
-        if (depth <= 0) return quiesce(board, alpha, beta);
+        if (depth <= 0) return quiesce(board, depth - 1, alpha, beta);
 
         int bestScore = EvalConstants.MIN_SCORE;
         ArrayList<Move> moves = board.getLegalMoves();
@@ -105,16 +106,19 @@ public class Bot {
         return bestScore;
     }
 
-    public static int quiesce(Board board, int alpha, int beta) {
+    public static int quiesce(Board board, int depth, int alpha, int beta) {
+        nodesSearched++;
         // Standing Pat
         int bestScore = evaluateBoard(board); // Start off with static eval
         if (bestScore >= beta) return bestScore;
         if (bestScore > alpha) alpha = bestScore;
 
         ArrayList<Move> captures = board.getLegalCaptures();
-        for (Move m : captures) {
+        scoreMoves(board, captures, depth);
+        for (int i = 0; i < captures.size(); i++) {
+            Move m = pickBestMove(captures, i);
             board.makeMove(m);
-            int score = -quiesce(board, -beta, -alpha);
+            int score = -quiesce(board, depth - 1, -beta, -alpha);
             board.unmakeMove(m);
 
             if (score >= beta) return score;
@@ -139,9 +143,9 @@ public class Bot {
 
                 move.score = 1000000 + (victimScore * 10 - attackerScore);
             }
-            else if (move.equals(killerMoves[ply][0]))
+            else if (ply > 0 && move.equals(killerMoves[ply][0]))
                 move.score = 900000;
-            else if (move.equals(killerMoves[ply][1]))
+            else if (ply > 0 && move.equals(killerMoves[ply][1]))
                 move.score = 800000;
             else {
                 int colorIndex = (Piece.color(move.piece) == Piece.White) ? 0 : 1;
@@ -167,7 +171,7 @@ public class Bot {
 
     static void storeKiller(Move move, int depth) {
         int ply = MAX_DEPTH - depth;
-        if (!move.isCapture) {
+        if (ply > 0 && ply < MAX_DEPTH - 1 && !move.isCapture) {
             killerMoves[ply][1] = killerMoves[ply][0];
             killerMoves[ply][0] = move;
         }
@@ -189,14 +193,7 @@ public class Bot {
         ArrayList<Move> blackMoves = board.getLegalMoves(Piece.Black, false);
 
         // Material score - The number of pieces available
-        int kingDiff = EvalConstants.kingScore * (board.getCount(Piece.King | Piece.White) - board.getCount(Piece.King | Piece.Black));
-        int queenDiff = EvalConstants.queenScore * (board.getCount(Piece.Queen | Piece.White) - board.getCount(Piece.Queen | Piece.Black));
-        int rookDiff = EvalConstants.rookScore * (board.getCount(Piece.Rook | Piece.White) - board.getCount(Piece.Rook | Piece.Black));
-        int bishopDiff = EvalConstants.bishopScore * (board.getCount(Piece.Bishop | Piece.White) - board.getCount(Piece.Bishop | Piece.Black));
-        int knightDiff = EvalConstants.knightScore * (board.getCount(Piece.Knight | Piece.White) - board.getCount(Piece.Knight | Piece.Black));
-        int pawnDiff = EvalConstants.pawnScore * (board.getCount(Piece.Pawn | Piece.White) - board.getCount(Piece.Pawn | Piece.Black));
-
-        int materialScore = kingDiff + queenDiff + rookDiff + bishopDiff + knightDiff + pawnDiff;
+        int materialScore = countMaterial(board, Piece.White) - countMaterial(board, Piece.Black);
         eval += materialScore;
 
         // Mobility score - The number of moves available
@@ -204,38 +201,75 @@ public class Bot {
         eval += mobilityScore;
 
         // Piece-Square Table - Providing bonuses for pieces to be on certain squares
-        int pstScore = 0;
-        for (int pos : board.getPositions(Piece.Pawn | Piece.White))
-            pstScore += EvalConstants.pawnTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.Bishop | Piece.White))
-            pstScore += EvalConstants.bishopTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.Knight | Piece.White))
-            pstScore += EvalConstants.knightTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.Rook | Piece.White))
-            pstScore += EvalConstants.rookTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.Queen | Piece.White))
-            pstScore += EvalConstants.queenTable[pos ^ 56];
-        for (int pos : board.getPositions(Piece.King | Piece.White))
-            pstScore += EvalConstants.kingTable[pos ^ 56];
+        eval += calculatePSTScore(board, Piece.White) - calculatePSTScore(board, Piece.Black);
 
-        for (int pos : board.getPositions(Piece.Pawn | Piece.Black))
-            pstScore -= EvalConstants.pawnTable[pos];
-        for (int pos : board.getPositions(Piece.Bishop | Piece.Black))
-            pstScore -= EvalConstants.bishopTable[pos];
-        for (int pos : board.getPositions(Piece.Knight | Piece.Black))
-            pstScore -= EvalConstants.knightTable[pos];
-        for (int pos : board.getPositions(Piece.Rook | Piece.Black))
-            pstScore -= EvalConstants.rookTable[pos];
-        for (int pos : board.getPositions(Piece.Queen | Piece.Black))
-            pstScore -= EvalConstants.queenTable[pos];
-        for (int pos : board.getPositions(Piece.King | Piece.Black))
-            pstScore -= EvalConstants.kingTable[pos];
-
-        eval += pstScore;
+        // Encourages king to move out in endgame
+        eval += calculateKingMopup(board, Piece.White) - calculateKingMopup(board, Piece.Black);
 
         // The negamax algorithm requires white and black moves to be of opposite signs
         int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
         return relativeMultiplier * eval;
+    }
+
+    public static int countMaterial(Board board, int color) {
+        int materialScore = 0;
+        materialScore += EvalConstants.queenScore * board.getCount(Piece.Queen | color);
+        materialScore += EvalConstants.rookScore * board.getCount(Piece.Rook | color);
+        materialScore += EvalConstants.bishopScore * board.getCount(Piece.Bishop | color);
+        materialScore += EvalConstants.knightScore * board.getCount(Piece.Knight | color);
+        materialScore += EvalConstants.pawnScore * board.getCount(Piece.Pawn | color);
+
+        return materialScore;
+    }
+
+    public static int calculatePSTScore(Board board, int color) {
+        int pstScore = 0;
+        int colorFlip = (color == Piece.White) ? 56 : 0;
+        for (int pos : board.getPositions(Piece.Pawn | color))
+            pstScore += EvalConstants.pawnTable[pos ^ colorFlip];
+        for (int pos : board.getPositions(Piece.Bishop | color))
+            pstScore += EvalConstants.bishopTable[pos ^ colorFlip];
+        for (int pos : board.getPositions(Piece.Knight | color))
+            pstScore += EvalConstants.knightTable[pos ^ colorFlip];
+        for (int pos : board.getPositions(Piece.Rook | color))
+            pstScore += EvalConstants.rookTable[pos ^ colorFlip];
+        for (int pos : board.getPositions(Piece.Queen | color))
+            pstScore += EvalConstants.queenTable[pos ^ colorFlip];
+        for (int pos : board.getPositions(Piece.King | color))
+            pstScore += EvalConstants.kingTable[pos ^ colorFlip];
+
+        return pstScore;
+    }
+
+    public static int calculateKingMopup(Board board, int toMove) {
+        int eval = 0;
+
+        int otherColor = (toMove == Piece.White) ? Piece.Black : Piece.White;
+        int friendlyKingPos = board.getPositions(Piece.King | toMove)[0];
+        int enemyKingPos = board.getPositions(Piece.King | otherColor)[0];
+
+        // Favor positions where the opponent king has been forced away from the center
+        int enemyKingRank = enemyKingPos / 8;
+        int enemyKingFile = enemyKingPos % 8;
+
+        int enemyKingDistanceToCenterFile = Math.max(3 - enemyKingFile, enemyKingFile - 4);
+        int enemyKingDistanceToCenterRank = Math.max(3 - enemyKingRank, enemyKingRank - 4);
+        int enemyKingDistanceFromCenter = enemyKingDistanceToCenterFile + enemyKingDistanceToCenterRank;
+        eval += enemyKingDistanceFromCenter;
+
+        // Encourage the king to help the other pieces deliver checkmate
+        int friendlyKingRank = friendlyKingPos / 8;
+        int friendlyKingFile = friendlyKingPos % 8;
+
+        int distanceBetweenKingFiles = Math.abs(friendlyKingFile - enemyKingFile);
+        int distanceBetweenKingRanks = Math.abs(friendlyKingRank - enemyKingRank);
+        int distanceBetweenKings = distanceBetweenKingRanks + distanceBetweenKingFiles;
+        eval += (14 - distanceBetweenKings);
+
+        // Scale the effectiveness of this change by how many pieces the opponent has left
+        int endgameSignificance = (16 - Long.bitCount(board.getColorBitboard(otherColor))) * EvalConstants.mopupScore;
+
+        return (eval * 10 * endgameSignificance);
     }
 
 

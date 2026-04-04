@@ -3,16 +3,16 @@ public class EvalConstants {
     public static final int MAX_SCORE = 50000;
 
     // Scores for Material evaluation
-    public static final int kingScore = 200000;
-    public static final int queenScore = 1500;
-    public static final int rookScore = 700;
-    public static final int bishopScore = 350;
-    public static final int knightScore = 350;
+    public static final int kingScore = 20000;
+    public static final int queenScore = 900;
+    public static final int rookScore = 500;
+    public static final int bishopScore = 330;
+    public static final int knightScore = 320;
     public static final int pawnScore = 100;
 
     // Additional evaluation constants
     public static final int mobilityMultiplier = 5;
-    public static final int checkScore = 50000;
+    public static final int mopupScore = 50;
 
     // Piece-Square Tables
     // Note: These tables are from black's perspective (index 0 = rank 8). White's evaluation must invert the table
