@@ -5,7 +5,6 @@ public class Bot {
     static int MAX_DEPTH = 15;
 
     static int[][][] historyTable = new int[2][64][64];
-    static int maxHistoryScore = 16384;
 
     static Move[][] killerMoves = new Move[MAX_DEPTH][2];
 
@@ -78,7 +77,7 @@ public class Bot {
 
     private static int negamax(Board board, int depth, int alpha, int beta) {
         nodesSearched++;
-        if (depth <= 0) return quiesce(board, depth - 1, alpha, beta);
+        if (depth <= 0) return quiesce(board, depth, alpha, beta);
 
         int bestScore = EvalConstants.MIN_SCORE;
         ArrayList<Move> moves = board.getLegalMoves();
@@ -141,12 +140,12 @@ public class Bot {
                 int attacker = move.piece;
                 int attackerScore = EvalConstants.getPieceScore(attacker);
 
-                move.score = 1000000 + (victimScore * 10 - attackerScore);
+                move.score = EvalConstants.captureBaseScore + (victimScore * 10 - attackerScore);
             }
             else if (ply > 0 && move.equals(killerMoves[ply][0]))
-                move.score = 900000;
+                move.score = EvalConstants.firstKillerScore;
             else if (ply > 0 && move.equals(killerMoves[ply][1]))
-                move.score = 800000;
+                move.score = EvalConstants.secondKillerScore;
             else {
                 int colorIndex = (Piece.color(move.piece) == Piece.White) ? 0 : 1;
                 move.score = historyTable[colorIndex][move.startIndex][move.endIndex];
@@ -179,9 +178,9 @@ public class Bot {
 
     static void updateHistoryTable(int color, int from, int to, int bonus) {
         int colorIndex = (color == Piece.White) ? 0 : 1;
-        int clampedBonus = Math.clamp(bonus, -maxHistoryScore, maxHistoryScore);
+        int clampedBonus = Math.clamp(bonus, -EvalConstants.maxHistoryScore, EvalConstants.maxHistoryScore);
         historyTable[colorIndex][from][to] +=
-                clampedBonus - historyTable[colorIndex][from][to] + Math.abs(clampedBonus) / maxHistoryScore;
+                clampedBonus - historyTable[colorIndex][from][to] + Math.abs(clampedBonus) / EvalConstants.maxHistoryScore;
     }
 
 
@@ -206,7 +205,7 @@ public class Bot {
         // Encourages king to move out in endgame
         eval += calculateKingMopup(board, Piece.White) - calculateKingMopup(board, Piece.Black);
 
-        // The negamax algorithm requires white and black moves to be of opposite signs
+        // The negamax algorithm requires white and black turns to be of opposite signs
         int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
         return relativeMultiplier * eval;
     }
@@ -241,11 +240,11 @@ public class Bot {
         return pstScore;
     }
 
-    public static int calculateKingMopup(Board board, int toMove) {
+    public static int calculateKingMopup(Board board, int color) {
         int eval = 0;
 
-        int otherColor = (toMove == Piece.White) ? Piece.Black : Piece.White;
-        int friendlyKingPos = board.getPositions(Piece.King | toMove)[0];
+        int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
+        int friendlyKingPos = board.getPositions(Piece.King | color)[0];
         int enemyKingPos = board.getPositions(Piece.King | otherColor)[0];
 
         // Favor positions where the opponent king has been forced away from the center
@@ -264,12 +263,12 @@ public class Bot {
         int distanceBetweenKingFiles = Math.abs(friendlyKingFile - enemyKingFile);
         int distanceBetweenKingRanks = Math.abs(friendlyKingRank - enemyKingRank);
         int distanceBetweenKings = distanceBetweenKingRanks + distanceBetweenKingFiles;
-        eval += (14 - distanceBetweenKings);
+        eval += (14 - distanceBetweenKings) * 5;
 
         // Scale the effectiveness of this change by how many pieces the opponent has left
         int endgameSignificance = (16 - Long.bitCount(board.getColorBitboard(otherColor))) * EvalConstants.mopupScore;
 
-        return (eval * 10 * endgameSignificance);
+        return (eval * endgameSignificance);
     }
 
 

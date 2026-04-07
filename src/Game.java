@@ -15,7 +15,7 @@ public class Game {
     public static int thinkingTime = 1000;
 
     public static void main(String[] args) {
-        Board board = new Board("3r4/3r4/3k4/8/8/8/3K4/8 w - - 0 1");
+        Board board = new Board("8/8/8/6q1/8/5k2/7K/8 w - - 0 1");
 
         setupWindow(board);
     }
@@ -103,7 +103,7 @@ public class Game {
     static Move makeBotMove(Board board) {
         Bot.nodesSearched = 0;
         long startTime = System.nanoTime();
-        Move botMove = Bot.findBestMove(board, thinkingTime);
+        Move botMove = Bot.findBestMoveStatic(board, 6);
         long endTime = System.nanoTime();
         board.makeMove(botMove);
 

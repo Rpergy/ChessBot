@@ -10,9 +10,15 @@ public class EvalConstants {
     public static final int knightScore = 320;
     public static final int pawnScore = 100;
 
+    // Scores for move ordering
+    public static final int maxHistoryScore = 16384;
+    public static final int captureBaseScore = 1000000;
+    public static final int firstKillerScore = 900000;
+    public static final int secondKillerScore = 800000;
+
     // Additional evaluation constants
-    public static final int mobilityMultiplier = 5;
-    public static final int mopupScore = 50;
+    public static final int mobilityMultiplier = 120;
+    public static final int mopupScore = 100;
 
     // Piece-Square Tables
     // Note: These tables are from black's perspective (index 0 = rank 8). White's evaluation must invert the table

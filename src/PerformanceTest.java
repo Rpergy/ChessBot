@@ -1,11 +1,7 @@
 public class PerformanceTest {
     public static void main(String[] args) {
-        Board board = new Board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
+        Board board = new Board("4r3/3r4/8/3k4/8/3K4/8/8 w - - 0 1");
 
-        for (int i = 1; i <= 4; i++) {
-            Bot.findBestMove(board, i);
-            System.out.println(Bot.nodesSearched);
-            Bot.nodesSearched = 0;
-        }
+        System.out.println(Bot.evaluateBoard(board));
     }
 }
