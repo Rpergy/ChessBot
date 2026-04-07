@@ -31,7 +31,9 @@ public class Bot {
         t.start();
         while(!timeLimitReached) {
             System.out.println("Searching Depth " + searchDepth);
-            bestMove = rootNegamax(board, searchDepth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE);
+            MAX_DEPTH = searchDepth;
+            Move evaluatedMove = rootNegamax(board, searchDepth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE);
+            if (evaluatedMove != null) bestMove = evaluatedMove;
             searchDepth++;
         }
 
@@ -40,6 +42,7 @@ public class Bot {
 
     public static Move findBestMoveStatic(Board board, int depth) {
         timeLimitReached = false;
+        MAX_DEPTH = depth;
         return rootNegamax(board, depth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE);
     }
 
@@ -52,15 +55,12 @@ public class Bot {
         ArrayList<Move> moves = board.getLegalMoves();
         scoreMoves(board, moves, depth);
         for (int i = 0; i < moves.size(); i++) {
-            if (timeLimitReached) return bestMove;
+            if (timeLimitReached) return null; // Search interrupted and canceled
             Move m = pickBestMove(moves, i);
 
             board.makeMove(m);
             int score = -negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove(m);
-
-            System.out.println("Move: " + m);
-            System.out.println("Eval: " + score);
 
             if (score > bestScore) {
                 bestScore = score;
@@ -86,6 +86,11 @@ public class Bot {
 
         int bestScore = EvalConstants.MIN_SCORE;
         ArrayList<Move> moves = board.getLegalMoves();
+
+        if (moves.isEmpty()) {
+            if (board.inCheck(board.toMove)) return EvalConstants.MIN_SCORE + (MAX_DEPTH - depth);
+            else return 0;
+        }
 
         scoreMoves(board, moves, depth);
 
@@ -213,7 +218,7 @@ public class Bot {
         eval += calculatePSTScore(board, Piece.White) - calculatePSTScore(board, Piece.Black);
 
         // Encourages king to move out in endgame
-//        eval += calculateKingMopup(board, Piece.White) - calculateKingMopup(board, Piece.Black);
+        eval += calculateKingMopup(board, Piece.White) - calculateKingMopup(board, Piece.Black);
 
         return relativeMultiplier * eval;
     }
