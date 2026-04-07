@@ -103,7 +103,7 @@ public class Game {
     static Move makeBotMove(Board board) {
         Bot.nodesSearched = 0;
         long startTime = System.nanoTime();
-        Move botMove = Bot.findBestMoveStatic(board, 6);
+        Move botMove = Bot.findBestMoveStatic(board, 3);
         long endTime = System.nanoTime();
         board.makeMove(botMove);
 

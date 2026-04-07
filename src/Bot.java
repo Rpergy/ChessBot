@@ -39,11 +39,12 @@ public class Bot {
     }
 
     public static Move findBestMoveStatic(Board board, int depth) {
+        timeLimitReached = false;
         return rootNegamax(board, depth, EvalConstants.MIN_SCORE, EvalConstants.MAX_SCORE);
     }
 
     private static Move rootNegamax(Board board, int depth, int alpha, int beta) {
-        if (depth <= 0) return null;
+        if (depth == 0) return null;
 
         int bestScore = EvalConstants.MIN_SCORE;
         Move bestMove = null;
@@ -57,6 +58,9 @@ public class Bot {
             board.makeMove(m);
             int score = -negamax(board, depth - 1, -beta, -alpha);
             board.unmakeMove(m);
+
+            System.out.println("Move: " + m);
+            System.out.println("Eval: " + score);
 
             if (score > bestScore) {
                 bestScore = score;
@@ -77,11 +81,14 @@ public class Bot {
 
     private static int negamax(Board board, int depth, int alpha, int beta) {
         nodesSearched++;
-        if (depth <= 0) return quiesce(board, depth, alpha, beta);
+
+        if (depth == 0) return quiesce(board, alpha, beta);
 
         int bestScore = EvalConstants.MIN_SCORE;
         ArrayList<Move> moves = board.getLegalMoves();
+
         scoreMoves(board, moves, depth);
+
         for (int i = 0; i < moves.size(); i++) {
             if (timeLimitReached) return bestScore;
             Move m = pickBestMove(moves, i);
@@ -105,7 +112,7 @@ public class Bot {
         return bestScore;
     }
 
-    public static int quiesce(Board board, int depth, int alpha, int beta) {
+    public static int quiesce(Board board, int alpha, int beta) {
         nodesSearched++;
         // Standing Pat
         int bestScore = evaluateBoard(board); // Start off with static eval
@@ -113,11 +120,11 @@ public class Bot {
         if (bestScore > alpha) alpha = bestScore;
 
         ArrayList<Move> captures = board.getLegalCaptures();
-        scoreMoves(board, captures, depth);
+        scoreMoves(board, captures, -1);
         for (int i = 0; i < captures.size(); i++) {
             Move m = pickBestMove(captures, i);
             board.makeMove(m);
-            int score = -quiesce(board, depth - 1, -beta, -alpha);
+            int score = -quiesce(board, -beta, -alpha);
             board.unmakeMove(m);
 
             if (score >= beta) return score;
@@ -142,9 +149,9 @@ public class Bot {
 
                 move.score = EvalConstants.captureBaseScore + (victimScore * 10 - attackerScore);
             }
-            else if (ply > 0 && move.equals(killerMoves[ply][0]))
+            else if (depth > 0 && move.equals(killerMoves[ply][0]))
                 move.score = EvalConstants.firstKillerScore;
-            else if (ply > 0 && move.equals(killerMoves[ply][1]))
+            else if (depth > 0 && move.equals(killerMoves[ply][1]))
                 move.score = EvalConstants.secondKillerScore;
             else {
                 int colorIndex = (Piece.color(move.piece) == Piece.White) ? 0 : 1;
@@ -188,6 +195,9 @@ public class Bot {
     public static int evaluateBoard(Board board) {
         int eval = 0;
 
+        // The negamax algorithm requires white and black turns to be of opposite signs
+        int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
+
         ArrayList<Move> whiteMoves = board.getLegalMoves(Piece.White, false);
         ArrayList<Move> blackMoves = board.getLegalMoves(Piece.Black, false);
 
@@ -203,10 +213,8 @@ public class Bot {
         eval += calculatePSTScore(board, Piece.White) - calculatePSTScore(board, Piece.Black);
 
         // Encourages king to move out in endgame
-        eval += calculateKingMopup(board, Piece.White) - calculateKingMopup(board, Piece.Black);
+//        eval += calculateKingMopup(board, Piece.White) - calculateKingMopup(board, Piece.Black);
 
-        // The negamax algorithm requires white and black turns to be of opposite signs
-        int relativeMultiplier = (board.toMove == Piece.White) ? 1 : -1;
         return relativeMultiplier * eval;
     }
 
