@@ -11,10 +11,14 @@ public class Board {
 
     Move lastMove;
 
+    long hashKey = 0L;
+
     Deque<UnmakeInfo> boardInfo;
 
     public Board(String fen) {
         MoveLookups.initializeData();
+        TTEntry.generateHashCodes();
+
         pieceBitboards = new long[12];
         squares = new int[64];
         lastMove = null;
@@ -37,12 +41,14 @@ public class Board {
                     int offset = Integer.parseInt(square + "");
                     file += offset;
                 } catch (NumberFormatException e) { // Piece
-                    int pieceType = fenMap.get(square);
+                    int piece = fenMap.get(square);
                     int index = rank * 8 + file;
 
-                    long oldBitboard = getPieceBitboard(pieceType);
-                    setPieceBitboard(pieceType, oldBitboard | (1L << index));
-                    squares[index] = pieceType;
+                    hashKey ^= TTEntry.pieceSquare[Piece.asIndex(piece)][index];
+
+                    long oldBitboard = getPieceBitboard(piece);
+                    setPieceBitboard(piece, oldBitboard | (1L << index));
+                    squares[index] = piece;
                     file ++;
                 }
             }
@@ -55,8 +61,13 @@ public class Board {
             blackKingCastle = (fen.split(" ")[2].indexOf('k') != -1);
             blackQueenCastle = (fen.split(" ")[2].indexOf('q') != -1);
         }
+        if (whiteQueenCastle) hashKey ^= TTEntry.castling[0];
+        if (whiteKingCastle) hashKey ^= TTEntry.castling[1];
+        if (blackQueenCastle) hashKey ^= TTEntry.castling[2];
+        if (blackKingCastle) hashKey ^= TTEntry.castling[3];
 
         toMove = (fen.split(" ")[1].equals("w")) ? Piece.White : Piece.Black;
+        hashKey ^= (toMove == Piece.White) ? TTEntry.toMove : 0;
     }
 
     public void makeMove(Move m) {
@@ -89,20 +100,23 @@ public class Board {
         // Remove the old piece location
         newBitboard &= ~(1L << m.startIndex);
         squares[m.startIndex] = 0;
+        hashKey ^= TTEntry.pieceSquare[Piece.asIndex(m.piece)][m.startIndex];
         // Add the new piece location
         newBitboard |= (1L << m.endIndex);
         squares[m.endIndex] = m.piece;
+        hashKey ^= TTEntry.pieceSquare[Piece.asIndex(m.piece)][m.endIndex];
 
         setPieceBitboard(m.piece, newBitboard);
 
-        // Remove the captured piece from its bitboard
+        // (Captures) Remove the captured piece from its bitboard
         if (m.isCapture) {
             long newPieceBitboard = getPieceBitboard(capturedPiece);
             newPieceBitboard &= ~(1L << m.endIndex);
+            hashKey ^= TTEntry.pieceSquare[Piece.asIndex(capturedPiece)][m.endIndex];
             setPieceBitboard(capturedPiece, newPieceBitboard);
         }
 
-        // Remove the captured pawn from the bitboard
+        // (En Passant) Remove the captured pawn from the bitboard
         if (m.isPassant) {
             int offset = (color == Piece.White) ? -8 : 8;
             long newPawnBitboard = getPieceBitboard(Piece.Pawn | otherColor);
@@ -111,34 +125,42 @@ public class Board {
             squares[m.endIndex + offset] = 0;
         }
 
-        // Move the rook to its new spot
+        // (Castling) Move the rook to its new spot
         if (m.isCastle) {
             long newRookBitboard = getPieceBitboard(Piece.Rook | color);
             if (m.endIndex == 6) { // White Kingside Castle
                 // Remove rook
                 newRookBitboard &= ~(1L << 7);
                 squares[7] = 0;
+                hashKey ^= TTEntry.pieceSquare[Piece.asIndex(Piece.Rook | color)][7];
                 // Add back
                 newRookBitboard |= (1L << 5);
                 squares[5] = (Piece.Rook | color);
+                hashKey ^= TTEntry.pieceSquare[Piece.asIndex(Piece.Rook | color)][5];
             }
             else if (m.endIndex == 2) { // White Queenside Castle
                 newRookBitboard &= ~(1L);
                 squares[0] = 0;
+                hashKey ^= TTEntry.pieceSquare[Piece.asIndex(Piece.Rook | color)][0];
                 newRookBitboard |= (1L << 3);
                 squares[3] = (Piece.Rook | color);
+                hashKey ^= TTEntry.pieceSquare[Piece.asIndex(Piece.Rook | color)][3];
             }
             else if (m.endIndex == 62) { // Black Kingside Castle
                 newRookBitboard &= ~(1L << 63);
                 squares[63] = 0;
+                hashKey ^= TTEntry.pieceSquare[Piece.asIndex(Piece.Rook | color)][63];
                 newRookBitboard |= (1L << 61);
                 squares[61] = (Piece.Rook | color);
+                hashKey ^= TTEntry.pieceSquare[Piece.asIndex(Piece.Rook | color)][61];
             }
             else if (m.endIndex == 58) { // Black Queenside Castle
                 newRookBitboard &= ~(1L << 56);
                 squares[56] = 0;
+                hashKey ^= TTEntry.pieceSquare[Piece.asIndex(Piece.Rook | color)][56];
                 newRookBitboard |= (1L << 59);
                 squares[59] = (Piece.Rook | color);
+                hashKey ^= TTEntry.pieceSquare[Piece.asIndex(Piece.Rook | color)][59];
             }
             setPieceBitboard((Piece.Rook | color), newRookBitboard);
         }
@@ -149,15 +171,18 @@ public class Board {
             newPawnBitboard &= ~(1L << m.endIndex);
             setPieceBitboard(m.piece, newPawnBitboard);
             squares[m.endIndex] = 0;
+            hashKey ^= TTEntry.pieceSquare[Piece.asIndex(m.piece)][m.startIndex];
 
             // Replace it with the promotion
             long newPieceBitboard = getPieceBitboard(m.promotion);
             newPieceBitboard |= (1L << m.endIndex);
             setPieceBitboard(m.promotion, newPieceBitboard);
             squares[m.endIndex] = m.promotion;
+            hashKey ^= TTEntry.pieceSquare[Piece.asIndex(m.promotion)][m.endIndex];
         }
 
         toMove = (toMove == Piece.White) ? Piece.Black : Piece.White;
+        hashKey ^= TTEntry.toMove;
 
         lastMove = m;
     }
