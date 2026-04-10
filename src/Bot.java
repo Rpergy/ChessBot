@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 public class Bot {
-    static int MAX_DEPTH = 15;
+    static int MAX_DEPTH = 20;
 
     static int[][][] historyTable = new int[2][64][64];
 

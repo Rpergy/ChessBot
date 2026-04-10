@@ -15,7 +15,7 @@ public class Game {
     public static int thinkingTime = 1000;
 
     public static void main(String[] args) {
-        Board board = new Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        Board board = new Board("8/1p6/8/PK6/7p/8/5k1q/8 w - - 0 1");
 
         setupWindow(board);
     }

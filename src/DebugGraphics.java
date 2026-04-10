@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class DebugGraphics {
     public static void main(String[] args) {
-        Board board = new Board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
+        Board board = new Board("8/1p6/1K6/8/7p/8/5k1q/8 b - - 0 1");
 
         drawBoard(board);
     }
@@ -85,7 +85,7 @@ public class DebugGraphics {
     }
 
     static void displayMoves(Board board, JButton[] squares, int color) {
-        ArrayList<Move> moves = board.getLegalCaptures(color);
+        ArrayList<Move> moves = board.getLegalMoves(color);
 
         System.out.println("Move Count: " + moves.size());
         for (Move m : moves) {
