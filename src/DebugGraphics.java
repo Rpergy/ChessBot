@@ -6,7 +6,9 @@ import java.util.ArrayList;
 
 public class DebugGraphics {
     public static void main(String[] args) {
-        Board board = new Board("8/1p6/1K6/8/7p/8/5k1q/8 b - - 0 1");
+        Board board = new Board("8/8/q7/Pp6/7p/4k3/K7/8 w - - 0 1");
+
+        board.lastMove = new Move(49, 33, (Piece.Pawn | Piece.Black));
 
         drawBoard(board);
     }

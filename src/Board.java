@@ -522,11 +522,27 @@ public class Board {
             if (lastMove != null) {
                 int passantRank = (color == Piece.White) ? 4 : 3;
                 int passantMove = (color == Piece.White) ? 1 : -1;
+
+                int to = lastMove.endIndex + passantMove * 8;
+
                 boolean validLastMove = (Math.abs(lastMove.endIndex - lastMove.startIndex) == 16) && (lastMove.piece == (Piece.Pawn | otherColor));
                 boolean adjacentPawns = (Math.abs(lastMove.endIndex - from) == 1);
 
-                if (validLastMove && adjacentPawns && (from / 8) == passantRank) {
-                    int to = lastMove.endIndex + passantMove * 8;
+                // Only 1 checker, that checker must be the captured piece
+                long checkers = getKingAttackers(color);
+                int numCheckers = Long.bitCount(checkers);
+                int checkerPos = Long.numberOfTrailingZeros(checkers);
+                boolean legalCheckMove =  (numCheckers <= 1)// En passant can only resolve single checks
+                        && (checkerPos == lastMove.endIndex || checkerPos == 64) // The checker is the pawn (or no checker)
+                        && (pinMask == 0 || (((pinMask >> to) & 1) != 0)); // The piece is not pinned or stays in the pin ray
+
+                int kingSquare = Long.numberOfTrailingZeros(getPieceBitboard(Piece.King | color));
+                long occupancyWithoutPawn = getOccupancy() & ~(1L << lastMove.endIndex);
+                long queensBishops = getPieceBitboard(Piece.Bishop | otherColor) | getPieceBitboard(Piece.Queen | otherColor);
+                boolean noCheckReveal = // The move does not reveal an attack on the king
+                        ((MoveLookups.getBishopMoves(kingSquare, occupancyWithoutPawn) & queensBishops) == 0);
+
+                if (legalCheckMove && noCheckReveal && validLastMove && adjacentPawns && (from / 8) == passantRank) {
                     moves.add(new Move(from, to, (Piece.Pawn | color), false, false, true));
                 }
             }
@@ -651,6 +667,7 @@ public class Board {
         int kingSq = Long.numberOfTrailingZeros(getPieceBitboard(Piece.King | color));
         int otherColor = (color == Piece.White) ? Piece.Black : Piece.White;
         long occupancy = getOccupancy();
+
 
         long rookAttackers = getPieceBitboard(Piece.Rook | otherColor) & MoveLookups.getRookMoves(kingSq, occupancy);
         long bishopAttackers = getPieceBitboard(Piece.Bishop | otherColor) & MoveLookups.getBishopMoves(kingSq, occupancy);
